@@ -13,3 +13,15 @@ public enum BubbleTypes
     Nero,
 }
 
+public enum ClickAreaTypes
+{
+    None,
+    Click,
+    
+    Cancel,
+
+    Press,
+
+    Anything,
+}
+
