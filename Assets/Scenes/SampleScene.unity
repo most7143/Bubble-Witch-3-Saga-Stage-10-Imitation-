@@ -686,6 +686,7 @@ MonoBehaviour:
     Type: 4
   ClickType: 0
   BubbleAim: {fileID: 1531736040}
+  BubbleShot: {fileID: 1531736042}
   pressDelay: 0.2
 --- !u!1 &383373780
 GameObject:
@@ -2019,6 +2020,8 @@ GameObject:
   - component: {fileID: 1531736038}
   - component: {fileID: 1531736040}
   - component: {fileID: 1531736039}
+  - component: {fileID: 1531736041}
+  - component: {fileID: 1531736042}
   m_Layer: 5
   m_Name: Shooter
   m_TagString: Untagged
@@ -2262,6 +2265,42 @@ MonoBehaviour:
   bubbleRadius: 25
   maxReflections: 2
   lineWidth: 0.1
+  Preview: {fileID: 1531736041}
+--- !u!114 &1531736041
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1531736034}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4900e2e24183d1247af8114199b85585, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  previewBubblePrefab: {fileID: 6293901166790963819, guid: 54ee4f0adebe9b647a95ac46dc599b82, type: 3}
+  previewAlpha: 0.5
+  Shooter: {fileID: 329292798}
+  HexMapController: {fileID: 1558187228}
+  bubbleRadius: 0.4
+--- !u!114 &1531736042
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1531736034}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59e606d52044e3d438050fd90790f4b8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Aim: {fileID: 1531736040}
+  Preview: {fileID: 1531736041}
+  Shooter: {fileID: 329292798}
+  HexMap: {fileID: 1558187228}
+  BubblePool: {fileID: 2032640466}
+  shotSpeed: 100
 --- !u!1 &1558187225
 GameObject:
   m_ObjectHideFlags: 0

@@ -20,6 +20,7 @@ public class ClickAreaController : MonoBehaviour
     public ClickAreaTypes ClickType;
 
     public UIBubbleAim BubbleAim;
+    public UIBubbleShot BubbleShot;
 
     [Header("프레스 딜레이 설정")]
     [SerializeField] private float pressDelay = 0.5f; // 0.5초 딜레이
@@ -39,7 +40,7 @@ public class ClickAreaController : MonoBehaviour
 
                 ClickType = area.Type;
             });
-
+          
             AddEvent(area.image.gameObject, EventTriggerType.PointerEnter, () =>
             {
                 if (IsPointerDown())
@@ -50,22 +51,32 @@ public class ClickAreaController : MonoBehaviour
                         OnPress(area.Type);
                     }
 
-                    if (area.Type == ClickAreaTypes.Cancel)
+                    if(area.Type == ClickAreaTypes.Cancel)
                     {
                         OnExit(area.Type);
                     }
                 }
             });
-
+       
         }
     }
 
-    private void Update()
+        private void Update()
     {
         // 전역 PointerUp 감지 (어디서든 클릭을 놓으면 감지)
         if (Input.GetMouseButtonUp(0) || (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Ended))
         {
             CancelPressDelay();
+
+            // 조준 중이었으면 버블 발사
+            if (BubbleAim != null && BubbleAim.IsAiming())
+            {
+                if (BubbleShot != null)
+                {
+                    BubbleShot.ShootBubble();
+                }
+            }
+
             BubbleAim.SetAimEnabled(false);
             ClickType = ClickAreaTypes.None;
         }
@@ -98,7 +109,7 @@ public class ClickAreaController : MonoBehaviour
         BubbleAim.SetAimEnabled(false);
     }
 
-
+    
     private void OnClickUp(ClickAreaTypes type)
     {
         Debug.Log(type + " 영역 터치 업");
