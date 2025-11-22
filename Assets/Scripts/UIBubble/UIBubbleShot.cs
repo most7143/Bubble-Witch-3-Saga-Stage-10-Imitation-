@@ -12,109 +12,155 @@ public class UIBubbleShot : MonoBehaviour
     public ObjectPool BubblePool;
 
     [Header("발사 설정")]
-    public float shotSpeed = 5f; // 이동 속도
-    private bool isShooting = false;
-    private GameObject currentShotBubble = null;
+    public float shotSpeed = 5f;             // 버블 이동 속도
+    private bool isShooting = false;         // 발사 중인지 여부
+    private GameObject currentShotBubble = null;  // 현재 발사된 버블
 
-    void Start()
-    {
-        if (Aim == null) Aim = FindObjectOfType<UIBubbleAim>();
-        if (Preview == null) Preview = FindObjectOfType<UIBubblePreview>();
-        if (Shooter == null) Shooter = FindObjectOfType<UIBubbleShooter>();
-        if (HexMap == null) HexMap = FindObjectOfType<HexMap>();
-    }
+    
+    public bool IsShooting() => isShooting;
+
 
     public void ShootBubble()
     {
-        if (isShooting || Shooter == null || Shooter.CurrentBubble == null || Preview == null || Aim == null)
+        // 이미 발사 중이거나 필요한 참조가 없으면 실행하지 않음
+        if (isShooting || Shooter?.CurrentBubble == null || Preview == null || Aim == null)
             return;
 
-        Vector3? targetPosition = Preview.GetPreviewBubbleWorldPosition();
+        // 프리뷰 버블 위치 가져오기
+        Vector3? targetPosition = Preview.GetPreviewPosition();
         if (!targetPosition.HasValue) return;
 
-        UIBubble uiBubble = Shooter.CurrentBubble;
-        Vector3 startPosition = uiBubble.Rect.position;
-
-        Bubble bubbleObj = CreateBubbleFromUI(uiBubble);
+        // UI 버블을 실제 게임 버블로 생성
+        Bubble bubbleObj = CreateBubbleFromUI(Shooter.CurrentBubble);
         if (bubbleObj == null) return;
 
-        StartCoroutine(MoveBubbleCoroutine(bubbleObj, startPosition, targetPosition.Value));
+        // 코루틴으로 버블 이동 시작
+        StartCoroutine(MoveBubbleCoroutine(bubbleObj, bubbleObj.transform.position, targetPosition.Value));
     }
 
+  
     private Bubble CreateBubbleFromUI(UIBubble uiBubble)
     {
-        if (BubblePool == null)
-            BubblePool = FindObjectOfType<ObjectPool>();
-        if (BubblePool == null)
-        {
-            Debug.LogError("BubblePool을 찾을 수 없습니다.");
-            return null;
-        }
 
+        // Object Pool에서 버블 생성
         Bubble bubble = BubblePool.SpawnBubble();
         if (bubble == null) return null;
 
+        // UI 버블 타입과 위치 적용
         bubble.SetBubbleType(uiBubble.Type);
-        bubble.transform.position = uiBubble.Rect.position;
+        bubble.transform.position = uiBubble.Rect.position; // 월드 위치 기준
         return bubble;
     }
 
+ 
     private IEnumerator MoveBubbleCoroutine(Bubble bubble, Vector3 start, Vector3 target)
     {
         isShooting = true;
         currentShotBubble = bubble.gameObject;
 
+        // UI 버블 비활성화, 조준 UI 비활성화
         Shooter.CurrentBubble.gameObject.SetActive(false);
         Aim?.SetAimEnabled(false);
 
-        Vector3 position = start;
-        Vector3 direction = (target - start).normalized;
+        // 이동 경로 생성
+        List<Vector3> path = GeneratePath(start, target);
 
-        while (Vector3.Distance(position, target) > 0.05f)
+        // 경로에 따라 차례로 이동
+        foreach (var point in path)
         {
-            // 이동
-            position += direction * shotSpeed * Time.deltaTime;
-
-            // 벽 충돌 처리
-            if (Aim != null)
+            while (Vector3.Distance(bubble.transform.position, point) > 0.05f)
             {
-                // 현재 위치에서 이동 방향으로 벽 충돌 확인
-                RaycastHit2D? wallHit = Aim.GetWallCollision(position, direction, shotSpeed * Time.deltaTime * 1.5f);
-                
-                if (wallHit.HasValue)
-                {
-                    // 벽 충돌 지점으로 위치 조정
-                    position = wallHit.Value.point;
-                    
-                    // 벽의 법선 벡터를 사용하여 반사
-                    Vector2 reflectDir = Vector2.Reflect(direction, wallHit.Value.normal).normalized;
-                    direction = reflectDir;
-                }
+                bubble.transform.position = Vector3.MoveTowards(bubble.transform.position, point, shotSpeed * Time.deltaTime);
+                yield return null;
             }
-
-            bubble.transform.position = position;
+            bubble.transform.position = point; // 목표점 스냅
             yield return null;
         }
 
-        // 최종 위치 정확히
-        bubble.transform.position = target;
+        // 최종 위치를 격자 위치로 스냅
+        Vector3 snappedPos = SnapToGrid(bubble.transform.position);
 
-        // 그리드 정렬 및 HexMap 등록
-        Vector3 snappedPos = SnapToGrid(target);
         if (HexMap != null)
             HexMap.RegisterBubble(bubble, snappedPos);
         else
             bubble.UpdateHexMapPosition(snappedPos);
 
-        // UI 업데이트
-        Shooter.UpdateSelectedBubble();
-        Shooter.CurrentBubble?.gameObject.SetActive(true);
-
+        // UI 버블 복구
         isShooting = false;
         currentShotBubble = null;
-        Aim?.SetAimEnabled(true);
+        
+        // 발사 후 새로운 버블 준비 (타입 설정 및 즉시 표시)
+        Shooter?.PrepareNewBubbleAfterShot();
+        
+        // 애니메이션 실행 (새 버블이 보인 상태에서 회전)
+        if (Shooter != null && !Shooter.BubbleRotation.IsRotating)
+        {
+            Shooter.BubbleRotation.AnimateBubbleRotation(Shooter.Bubbles, BubbleRotationTypes.Shot);
+        }
     }
 
+ 
+    private List<Vector3> GeneratePath(Vector3 start, Vector3 target)
+    {
+        List<Vector3> path = new List<Vector3>();
+
+        // 실제 프리뷰 좌표 가져오기 + z 값 맞춤
+        Vector3 finalPos = GetPreviewPositionWithZ(start);
+
+        // 벽 충돌 정보 가져오기
+        Vector3? wallHitPoint = Aim?.GetFirstWallHitAlongAim();
+        List<Vector3> pathPoints = Aim?.GetPathPoints();
+
+        // 경로 계산: 벽 튕김 여부 확인
+        if (pathPoints != null && pathPoints.Count >= 2)
+        {
+            if (pathPoints.Count >= 3 && wallHitPoint.HasValue)
+            {
+                path.Add(SetZ(wallHitPoint.Value, start.z)); // 벽 충돌 지점
+                path.Add(finalPos);                         // 목표 지점
+            }
+            else
+            {
+                path.Add(finalPos); // 벽 없이 바로 목표로
+            }
+        }
+        else
+        {
+            // trajectory가 없으면 시작점에서 프리뷰까지 직접 벽 체크
+            if (Aim != null && Aim.TryGetWallBetween(start, finalPos, out RaycastHit2D wallHit))
+            {
+                path.Add(SetZ(wallHit.point, start.z)); // 벽 충돌 지점
+                path.Add(finalPos);                      // 목표 지점
+            }
+            else
+            {
+                path.Add(finalPos); // 벽 없으면 그냥 목표
+            }
+        }
+
+        return path;
+    }
+
+
+    private Vector3 GetPreviewPositionWithZ(Vector3 start)
+    {
+        // Preview 좌표 가져오기, 순서대로 확인
+        Vector3? previewPos = Preview?.GetPreviewPosition()
+                             ?? Preview?.GetLastPreviewPosition()
+                             ?? Preview?.GetPreviewPosition();
+
+        if (!previewPos.HasValue)
+            previewPos = start;
+
+        return SetZ(previewPos.Value, start.z);
+    }
+
+   
+    private Vector3 SetZ(Vector3 pos, float z) => new Vector3(pos.x, pos.y, z);
+
+    // ===============================
+    // 6. SnapToGrid
+    // ===============================
     private Vector3 SnapToGrid(Vector3 position)
     {
         if (HexMap == null) return position;
@@ -123,17 +169,17 @@ public class UIBubbleShot : MonoBehaviour
         float hexHeight = HexMap.HexHeight;
         if (hexWidth <= 0f || hexHeight <= 0f) return position;
 
+        // X, Y 좌표를 육각형 격자에 맞춰 반올림
         float roundedX = Mathf.Round(position.x / hexWidth) * hexWidth;
         float roundedY = Mathf.Round(position.y / (hexHeight * 0.75f)) * (hexHeight * 0.75f);
         Vector3 snappedPos = new Vector3(roundedX, roundedY, position.z);
 
+        // 이미 다른 버블이 있으면 인접 위치 찾기
         if (HexMap.IsPositionOccupied(snappedPos))
-        {
             snappedPos = HexMap.FindEmptyAdjacentPosition(snappedPos, true);
-        }
 
         return snappedPos;
     }
 
-    public bool IsShooting() => isShooting;
+
 }

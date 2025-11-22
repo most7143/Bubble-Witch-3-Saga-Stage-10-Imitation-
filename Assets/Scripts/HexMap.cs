@@ -291,4 +291,75 @@ public class HexMap : MonoBehaviour
         // 빈 공간을 못 찾으면 원래 위치 반환
         return centerPosition;
     }
+    
+    /// <summary>
+    /// 특정 위치 주변의 모든 인접 위치 반환
+    /// </summary>
+    public List<Vector3> GetAdjacentPositions(Vector3 centerPosition)
+    {
+        List<Vector3> adjacentPositions = new List<Vector3>();
+        
+        Vector3[] adjacentOffsets = new Vector3[]
+        {
+            new Vector3(hexWidth, 0, 0),                          // 오른쪽
+            new Vector3(-hexWidth, 0, 0),                         // 왼쪽
+            new Vector3(hexWidth * 0.5f, hexHeight * 0.75f, 0),  // 오른쪽 위
+            new Vector3(-hexWidth * 0.5f, hexHeight * 0.75f, 0), // 왼쪽 위
+            new Vector3(hexWidth * 0.5f, -hexHeight * 0.75f, 0), // 오른쪽 아래
+            new Vector3(-hexWidth * 0.5f, -hexHeight * 0.75f, 0) // 왼쪽 아래
+        };
+        
+        foreach (var offset in adjacentOffsets)
+        {
+            Vector3 adjacentPos = centerPosition + offset;
+            Vector3 normalizedPos = NormalizePosition(adjacentPos);
+            adjacentPositions.Add(normalizedPos);
+        }
+        
+        return adjacentPositions;
+    }
+    
+    /// <summary>
+    /// 위치를 그리드 위치로 반올림
+    /// </summary>
+    public Vector3 RoundToGridPosition(Vector3 pos)
+    {
+        if (hexWidth <= 0 || hexHeight <= 0) return pos;
+        
+        float x = Mathf.Round(pos.x / hexWidth) * hexWidth;
+        float y = Mathf.Round(pos.y / (hexHeight * 0.75f)) * (hexHeight * 0.75f);
+        return new Vector3(x, y, pos.z);
+    }
+    
+    /// <summary>
+    /// 특정 위치 주변에 빈 공간이 있는지 확인
+    /// </summary>
+    public bool IsAdjacentSpaceAvailable(Vector3 bubbleCenter, Vector3 foundPosition)
+    {
+        if (Vector3.Distance(foundPosition, bubbleCenter) < 0.001f) return false;
+        
+        foreach (var pos in GetAdjacentPositions(bubbleCenter))
+        {
+            if (!IsPositionOccupied(pos)) return true;
+        }
+        return false;
+    }
+    
+    /// <summary>
+    /// 버블 충돌 지점을 기반으로 빈 헥사 공간 찾기
+    /// </summary>
+    public Vector3 FindEmptyHexSpace(Vector3 bubblePos, Vector2 hitPoint, bool isLeftSide)
+    {
+        Vector3 targetPos = bubblePos + new Vector3(
+            isLeftSide ? -hexWidth * 0.5f : hexWidth * 0.5f,
+            -hexHeight * 0.75f, 
+            0
+        );
+        Vector3 roundedPos = RoundToGridPosition(targetPos);
+        
+        if (IsPositionOccupied(roundedPos))
+            roundedPos = FindEmptyAdjacentPosition(bubblePos, isLeftSide);
+        
+        return roundedPos;
+    }
 }

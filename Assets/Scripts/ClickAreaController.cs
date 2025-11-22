@@ -69,7 +69,7 @@ public class ClickAreaController : MonoBehaviour
             CancelPressDelay();
 
             // 조준 중이었으면 버블 발사
-            if (BubbleAim != null && BubbleAim.IsAiming())
+            if (BubbleAim != null && BubbleAim.IsAiming)
             {
                 if (BubbleShot != null)
                 {

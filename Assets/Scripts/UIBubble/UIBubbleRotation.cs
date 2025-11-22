@@ -62,50 +62,86 @@ public class UIBubbleRotation : MonoBehaviour
 
 
 
-    public void AnimateBubbleRotation(List<UIBubble> bubbles)
+   public void AnimateBubbleRotation(List<UIBubble> bubbles, BubbleRotationTypes rotationType)
+{
+    if (bubbles == null || bubbles.Count <= 1 || IsRotating) return;
+
+    IsRotating = true;
+
+    float[] targetAngles = GetBubbleAngles(bubbles.Count);
+    Sequence seq = DOTween.Sequence();
+
+    for (int i = 0; i < bubbles.Count; i++)
     {
-        if (bubbles == null || bubbles.Count <= 1 || IsRotating) return;
+        UIBubble bubble = bubbles[i];
+        if (bubble == null) continue;
 
-        IsRotating = true;
+        float startAngle = bubble.currentAngle;
+        float targetAngle = targetAngles[i];
 
-        float[] targetAngles = GetBubbleAngles(bubbles.Count);
-        Sequence seq = DOTween.Sequence();
+        float angleDiff = targetAngle - startAngle;
 
+        // -180 ~ 180 범위로 정규화
+        while (angleDiff > 180f) angleDiff -= 360f;
+        while (angleDiff < -180f) angleDiff += 360f;
+
+        // 항상 반시계 방향으로 회전 (양수 각도)
+        if (angleDiff < 0f)
+        {
+            angleDiff += 360f;
+        }
+
+        seq.Join(DOTween.To(() => bubble.currentAngle,
+            currentMoveAngle =>
+            {
+                bubble.currentAngle = currentMoveAngle;
+                float rad = currentMoveAngle * Mathf.Deg2Rad;
+                Vector2 pos = circleCenter + new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * radius;
+
+                bubble.Rect.anchoredPosition = pos;
+            },
+            startAngle + angleDiff,
+            rotationDuration
+        ).SetEase(Ease.OutCubic));
+    }
+
+   // Shot 타입일 때: 회전이 끝난 후 비활성화된 버블 활성화 및 스케일 애니메이션
+if (rotationType == BubbleRotationTypes.Shot)
+{
+    seq.OnComplete(() =>
+    {
+        Sequence scaleSeq = DOTween.Sequence();
+        
+        // 비활성화된 버블 찾기 및 활성화
         for (int i = 0; i < bubbles.Count; i++)
         {
             UIBubble bubble = bubbles[i];
             if (bubble == null) continue;
-
-            float startAngle = bubble.currentAngle;
-            float targetAngle = targetAngles[i];
-
-            float angleDiff = targetAngle - startAngle;
-
-            while (angleDiff > 180f) angleDiff -= 360f;
-            while (angleDiff < -180f) angleDiff += 360f;
-
-            if (angleDiff > 0f)
+            
+            if (!bubble.gameObject.activeSelf)
             {
-                angleDiff -= 360f;
+                // 첫 번째 버블(인덱스 0)은 선택 상태 (1.0), 나머지는 비선택 상태 (0.8)
+                Vector3 originalScale = (i == 0) ? bubble.SelectedScale : bubble.DeselectedScale;
+                
+                // 스케일을 0으로 설정하고 활성화
+                bubble.Rect.localScale = Vector3.zero;
+                bubble.gameObject.SetActive(true);
+                
+                // 스케일 애니메이션: 0부터 원래 크기로
+                scaleSeq.Join(bubble.Rect.DOScale(originalScale, rotationDuration)
+                    .SetEase(Ease.OutBack));
             }
-
-
-            seq.Join(DOTween.To(() => bubble.currentAngle,
-                currentMoveAngle =>
-                {
-                    bubble.currentAngle = currentMoveAngle;
-                    float rad = currentMoveAngle * Mathf.Deg2Rad;
-                    Vector2 pos = circleCenter + new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * radius;
-
-                    bubble.Rect.anchoredPosition = pos;
-                },
-                startAngle + angleDiff,
-                rotationDuration
-            ).SetEase(Ease.OutCubic));
         }
-
-        seq.OnComplete(() => IsRotating = false);
-    }
+        
+        scaleSeq.OnComplete(() => IsRotating = false);
+    });
+}
+else
+{
+    // Rotate 타입일 때는 기존 로직 그대로
+    seq.OnComplete(() => IsRotating = false);
+}
+}
 
     public float[] GetBubbleAngles(int count)
     {

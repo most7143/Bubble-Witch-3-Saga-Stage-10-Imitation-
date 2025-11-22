@@ -6,7 +6,16 @@ public class UIBubble : MonoBehaviour
 {
     public RectTransform Rect;
     public BubbleTypes Type;
+
+    public Image Image;
+
     private UIBubbleShooter shooter;
+
+
+    public Vector3 SelectedScale= new Vector3(0.5f, 0.5f, 1f);
+    
+    public Vector3 DeselectedScale= new Vector3(0.4f, 0.4f, 1f);
+
     
     [HideInInspector]
     public float currentAngle = -90f; // 현재 각도 (12시 = -90도)
@@ -19,6 +28,11 @@ public class UIBubble : MonoBehaviour
         shooter = FindObjectOfType<UIBubbleShooter>();
     }
 
+    public void SetType(BubbleTypes type)
+    {
+        Type = type;
+        Image.sprite = ResourcesManager.Instance.GetBubbleSprite(Type);
+    }
     /// <summary>
     /// 원의 궤적을 따라 목표 각도로 애니메이션
     /// </summary>

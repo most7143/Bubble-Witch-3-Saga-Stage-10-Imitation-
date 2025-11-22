@@ -25,3 +25,10 @@ public enum ClickAreaTypes
     Anything,
 }
 
+public enum BubbleRotationTypes
+{
+    None,
+    Shot,
+    Rotate,
+}
+
