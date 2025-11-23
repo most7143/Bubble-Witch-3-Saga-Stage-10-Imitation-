@@ -1,5 +1,7 @@
 public enum BubbleTypes
 {
+
+    None,
     //일반 버블 3종
     Red,
     Blue,
@@ -17,7 +19,7 @@ public enum ClickAreaTypes
 {
     None,
     Click,
-    
+
     Cancel,
 
     Press,

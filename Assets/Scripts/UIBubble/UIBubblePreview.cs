@@ -18,7 +18,7 @@ public class UIBubblePreview : MonoBehaviour
     [SerializeField] private float previewAlpha = 0.5f;
 
     [Header("참조")]
-    public UIBubbleShooter Shooter;
+    public UIBubbleAim Aim;
     public HexMap HexMapController;
 
     [Header("크기 설정")]
@@ -35,7 +35,7 @@ public class UIBubblePreview : MonoBehaviour
 
     private const float HYSTERESIS_THRESHOLD = 0.1f;
 
-    
+
     public Vector3? GetPreviewPosition() => previewPosition;
     public bool HasPreviewPosition() => previewPosition.HasValue;
     public Vector3? GetLastPreviewPosition() => hysteresis.lastPreviewPos != Vector3.zero ? hysteresis.lastPreviewPos : previewPosition;
@@ -81,10 +81,10 @@ public class UIBubblePreview : MonoBehaviour
 
     private void UpdatePreviewBubble()
     {
-        if (previewBubbleInstance == null )
+        if (previewBubbleInstance == null)
             return;
 
-        if (previewPosition.HasValue && Shooter?.CurrentBubble != null)
+        if (previewPosition.HasValue && Aim.IsAiming == true)
         {
             previewBubbleInstance.transform.position = previewPosition.Value;
             previewBubbleInstance.SetActive(true);
@@ -108,9 +108,14 @@ public class UIBubblePreview : MonoBehaviour
     }
 
 
-  public Vector3? HandleBubbleHit(RaycastHit2D hit, Vector3 bubbleCenter, Bubble hitBubble, Vector2 direction, Vector3 surfacePoint, Action<Vector3> onSurfacePointAdded = null)
+    public Vector3? HandleBubbleHit(RaycastHit2D hit, Vector3 bubbleCenter, Bubble hitBubble, Vector2 direction, Vector3 surfacePoint, Action<Vector3> onSurfacePointAdded = null)
     {
-        if (hitBubble == null || HexMapController == null) return null;
+        // 초기 검증
+        if (hitBubble == null)
+        {
+            return null;
+        }
+
 
         onSurfacePointAdded?.Invoke(surfacePoint);
 
@@ -120,29 +125,71 @@ public class UIBubblePreview : MonoBehaviour
         bool isLeftSide = (hit.point.x - bubbleCenter.x) < 0f;
         if (useHysteresis)
         {
-            if (GetLastWasLeftSide()) 
+            if (GetLastWasLeftSide())
                 isLeftSide = (hit.point.x - bubbleCenter.x) <= threshold;
-            else 
+            else
                 isLeftSide = (hit.point.x - bubbleCenter.x) < -threshold;
         }
 
         if (Mathf.Abs(hit.point.x - bubbleCenter.x) < threshold)
             isLeftSide = direction.x < 0f ? true : GetLastWasLeftSide();
 
+
+        // 착지 위치 계산
         Vector3 emptySpacePos = HexMapController.FindEmptyHexSpace(bubbleCenter, hit.point, isLeftSide);
 
-        if (!HexMapController.IsAdjacentSpaceAvailable(bubbleCenter, emptySpacePos))
+        // 착지 위치가 유효한지 확인 (bubbleCenter의 인접 위치인지, 그리고 비어있는지)
+        var (centerRow, centerCol) = HexMapController.WorldToGrid(bubbleCenter);
+        var (landingRow, landingCol) = HexMapController.WorldToGrid(emptySpacePos);
+
+
+        // 인접 위치인지 확인
+        var adjacent = HexMapController.GetAdjacentCells(centerRow, centerCol);
+        bool isAdjacent = false;
+        foreach (var (row, col) in adjacent)
         {
-            SetPreviewPosition(null);
-            ResetHysteresis();
-            return null;
+            if (row == landingRow && col == landingCol)
+            {
+                isAdjacent = true;
+                break;
+            }
+        }
+
+
+        foreach (var (row, col) in adjacent)
+        {
+            bool isEmpty = HexMapController.IsEmpty(row, col);
+
+        }
+
+        // 인접 위치가 아니거나 비어있지 않으면 프리뷰 표시 안 함
+        if (!isAdjacent || !HexMapController.IsEmpty(landingRow, landingCol))
+        {
+            // 인접 위치 중 빈 공간 찾기
+            bool foundEmpty = false;
+            foreach (var (row, col) in adjacent)
+            {
+                if (HexMapController.IsEmpty(row, col))
+                {
+                    emptySpacePos = HexMapController.Positions[row, col];
+                    foundEmpty = true;
+                    break;
+                }
+            }
+
+            if (!foundEmpty)
+            {
+                SetPreviewPosition(null);
+                ResetHysteresis();
+                return null;
+            }
         }
 
         SetHysteresisInfo(hitBubble, emptySpacePos, isLeftSide);
         SetPreviewPosition(emptySpacePos, hitBubble, isLeftSide);
         return emptySpacePos;
     }
-    
+
 
     private void SetHysteresisInfo(Bubble hitBubble, Vector3 previewPos, bool isLeftSide)
     {
@@ -175,5 +222,5 @@ public class UIBubblePreview : MonoBehaviour
 
 
 
-  
+
 }

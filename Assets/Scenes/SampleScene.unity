@@ -1972,7 +1972,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   previewBubblePrefab: {fileID: 6293901166790963819, guid: 54ee4f0adebe9b647a95ac46dc599b82, type: 3}
   previewAlpha: 0.5
-  Shooter: {fileID: 329292798}
+  Aim: {fileID: 1531736040}
   HexMapController: {fileID: 1558187228}
   bubbleRadius: 0.4
 --- !u!114 &1531736042
@@ -2003,6 +2003,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1558187227}
   - component: {fileID: 1558187228}
+  - component: {fileID: 1558187229}
+  - component: {fileID: 1558187230}
   m_Layer: 0
   m_Name: Hex Map
   m_TagString: Untagged
@@ -2037,13 +2039,38 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2eb9611769d70244da8a433ec9487248, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ObjectPool: {fileID: 2032640466}
-  rows: 7
+  rows: 11
   cols: 11
   bubbleRadius: 0.25
   startPosition: {x: -2.6, y: 3}
   useRandomTypes: 1
-  availableTypes: 000000000100000002000000
+  availableTypes: 010000000200000003000000
+  ObjectPool: {fileID: 2032640466}
+  HexMapBubbleDestroy: {fileID: 1558187229}
+--- !u!114 &1558187229
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1558187225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 469dd517bcc859446a0ecb572bad3dc4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1558187230
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1558187225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a1b22c3b9271b243ac26eb23654edd3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1612503111
 GameObject:
   m_ObjectHideFlags: 0

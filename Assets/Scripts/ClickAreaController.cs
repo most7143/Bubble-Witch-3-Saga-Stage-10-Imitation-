@@ -85,7 +85,7 @@ public class ClickAreaController : MonoBehaviour
 
     private void OnClickDown(ClickAreaTypes type)
     {
-        Debug.Log(type + " 영역 터치 다운");
+        //Debug.Log(type + " 영역 터치 다운");
 
         if (type == ClickAreaTypes.Click)
         {
@@ -105,14 +105,14 @@ public class ClickAreaController : MonoBehaviour
 
     private void OnExit(ClickAreaTypes type)
     {
-        Debug.Log(type + " 영역 터치 취소");
+       // Debug.Log(type + " 영역 터치 취소");
         BubbleAim.SetAimEnabled(false);
     }
 
     
     private void OnClickUp(ClickAreaTypes type)
     {
-        Debug.Log(type + " 영역 터치 업");
+      //  Debug.Log(type + " 영역 터치 업");
 
         // 딜레이 취소
         CancelPressDelay();
@@ -143,7 +143,7 @@ public class ClickAreaController : MonoBehaviour
             BubbleAim.SetAimEnabled(true, 2);
         }
 
-        Debug.Log(type + " 영역 터치 누름 (딜레이 후)");
+      //  Debug.Log(type + " 영역 터치 누름 (딜레이 후)");
 
         // 코루틴 참조 초기화
         pressDelayCoroutine = null;

@@ -22,12 +22,6 @@ public class UIBubble : MonoBehaviour
     private Tween rotationTween;
 
 
-    void Start()
-    {
-        // UIBubbleShooter 찾기
-        shooter = FindObjectOfType<UIBubbleShooter>();
-    }
-
     public void SetType(BubbleTypes type)
     {
         Type = type;

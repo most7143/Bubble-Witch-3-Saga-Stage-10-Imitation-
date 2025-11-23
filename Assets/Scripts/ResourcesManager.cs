@@ -34,4 +34,19 @@ public class ResourcesManager : MonoBehaviour
         return null;
     }
 
+    public RuntimeAnimatorController GetBubbleAnimatorController(BubbleTypes type)
+    {
+        switch(type)
+        {
+            case BubbleTypes.Red:
+                return Resources.Load<RuntimeAnimatorController>("Animation/Bubble_Red");
+            case BubbleTypes.Blue:
+                return Resources.Load<RuntimeAnimatorController>("Animation/Bubble_Blue");
+            case BubbleTypes.Yellow:
+                return Resources.Load<RuntimeAnimatorController>("Animation/Bubble_Yellow");
+        }
+
+        return null;
+    }   
+
 }

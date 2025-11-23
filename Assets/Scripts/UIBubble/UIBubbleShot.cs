@@ -43,11 +43,9 @@ public class UIBubbleShot : MonoBehaviour
     {
 
         // Object Pool에서 버블 생성
-        Bubble bubble = BubblePool.SpawnBubble();
+        Bubble bubble = BubblePool.SpawnBubble(uiBubble.Type);
         if (bubble == null) return null;
 
-        // UI 버블 타입과 위치 적용
-        bubble.SetBubbleType(uiBubble.Type);
         bubble.transform.position = uiBubble.Rect.position; // 월드 위치 기준
         return bubble;
     }
@@ -81,10 +79,19 @@ public class UIBubbleShot : MonoBehaviour
         Vector3 snappedPos = SnapToGrid(bubble.transform.position);
 
         if (HexMap != null)
-            HexMap.RegisterBubble(bubble, snappedPos);
-        else
-            bubble.UpdateHexMapPosition(snappedPos);
-
+        {
+            var (row, col) = HexMap.WorldToGrid(snappedPos);
+            // 빈 공간이 아니면 인접 빈 공간 찾기
+            if (!HexMap.IsEmpty(row, col))
+            {
+                var (emptyRow, emptyCol) = HexMap.FindEmptyAdjacentCell(row, col, true);
+                snappedPos = HexMap.Positions[emptyRow, emptyCol];
+                row = emptyRow;
+                col = emptyCol;
+            }
+            HexMap.RegisterBubble(row, col, bubble, true);
+        }
+      
         // UI 버블 복구
         isShooting = false;
         currentShotBubble = null;
@@ -165,20 +172,9 @@ public class UIBubbleShot : MonoBehaviour
     {
         if (HexMap == null) return position;
 
-        float hexWidth = HexMap.HexWidth;
-        float hexHeight = HexMap.HexHeight;
-        if (hexWidth <= 0f || hexHeight <= 0f) return position;
-
-        // X, Y 좌표를 육각형 격자에 맞춰 반올림
-        float roundedX = Mathf.Round(position.x / hexWidth) * hexWidth;
-        float roundedY = Mathf.Round(position.y / (hexHeight * 0.75f)) * (hexHeight * 0.75f);
-        Vector3 snappedPos = new Vector3(roundedX, roundedY, position.z);
-
-        // 이미 다른 버블이 있으면 인접 위치 찾기
-        if (HexMap.IsPositionOccupied(snappedPos))
-            snappedPos = HexMap.FindEmptyAdjacentPosition(snappedPos, true);
-
-        return snappedPos;
+        // WorldToGrid로 변환 후 다시 월드 좌표로 변환
+        var (row, col) = HexMap.WorldToGrid(position);
+        return HexMap.Positions[row, col];
     }
 
 
