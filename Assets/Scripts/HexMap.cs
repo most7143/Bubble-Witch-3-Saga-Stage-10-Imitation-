@@ -20,7 +20,6 @@ public class HexMap : MonoBehaviour
     public ObjectPool ObjectPool;
     public HexMapBubbleDestroy HexMapBubbleDestroy;
 
-    // 실제 버블 저장: row/col이 “진짜 좌표”
     private Bubble[,] grid;
     private Vector3[,] worldPositions;
 
@@ -37,6 +36,9 @@ public class HexMap : MonoBehaviour
     public Vector2 StartPosition => startPosition;
     public Vector3[,] Positions => worldPositions;
 
+    public float BubbleRadius => bubbleRadius;
+
+
     void Awake()
     {
         InitializeGrid();
@@ -45,11 +47,6 @@ public class HexMap : MonoBehaviour
     }
 
 
-
-    void Start()
-    {
-        SpawnInitialGrid();
-    }
 
     // --------------------------------------------
     // 초기화
@@ -322,10 +319,6 @@ public class HexMap : MonoBehaviour
         return grid[row, col];
     }
 
-    // --------------------------------------------
-    // 헬퍼 메서드: Vector3 기반 호환성
-    // --------------------------------------------
-    
     /// <summary>
     /// 월드 좌표를 기반으로 빈 인접 셀 찾기 (월드 좌표 반환)
     /// </summary>
@@ -341,12 +334,16 @@ public class HexMap : MonoBehaviour
     /// </summary>
     public (int row, int col) FindEmptyAdjacentCell(int row, int col, bool preferLeft = true)
     {
-        var adjacent = GetAdjacentCells(row, col);
+        // HexMapHandler 사용
+        var emptyCells = HexMapHandler.GetEmptyAdjacentCells(this, row, col);
+        
+        if (emptyCells.Count == 0)
+            return (row, col);
         
         // 선호 방향에 따라 정렬
         if (preferLeft)
         {
-            adjacent.Sort((a, b) => {
+            emptyCells.Sort((a, b) => {
                 bool aIsLeft = a.col < col;
                 bool bIsLeft = b.col < col;
                 if (aIsLeft != bIsLeft) return aIsLeft ? -1 : 1;
@@ -355,23 +352,39 @@ public class HexMap : MonoBehaviour
         }
         else
         {
-            adjacent.Sort((a, b) => {
+            emptyCells.Sort((a, b) => {
                 bool aIsRight = a.col > col;
                 bool bIsRight = b.col > col;
                 if (aIsRight != bIsRight) return aIsRight ? -1 : 1;
                 return a.row.CompareTo(b.row); // 아래쪽 우선
             });
         }
+        
+        // 첫 번째 빈 셀 반환
+        return emptyCells[0];
+    }
 
-        // 빈 셀 찾기
-        foreach (var (nr, nc) in adjacent)
+    /// <summary>
+    /// 특정 위치 주변에 빈 공간이 있는지 확인
+    /// </summary>
+    public bool IsAdjacentSpaceAvailable(Vector3 bubbleCenter, Vector3 foundPosition)
+    {
+        if (Vector3.Distance(foundPosition, bubbleCenter) < 0.001f) return false;
+        
+        var (centerRow, centerCol) = WorldToGrid(bubbleCenter);
+        var (foundRow, foundCol) = WorldToGrid(foundPosition);
+        
+        // HexMapHandler 사용
+        var emptyAdjacent = HexMapHandler.GetEmptyAdjacentCells(this, centerRow, centerCol);
+        
+        // foundPosition이 인접 위치이고 비어있으면 true
+        if (emptyAdjacent.Contains((foundRow, foundCol)))
         {
-            if (IsEmpty(nr, nc))
-                return (nr, nc);
+            return true;
         }
-
-        // 빈 셀을 못 찾으면 원래 위치 반환
-        return (row, col);
+        
+        // foundPosition이 인접 위치가 아니더라도, bubbleCenter 주변에 빈 공간이 있으면 true
+        return emptyAdjacent.Count > 0;
     }
 
     /// <summary>
@@ -391,47 +404,5 @@ public class HexMap : MonoBehaviour
         return worldPositions[emptyRow, emptyCol];
     }
 
-    /// <summary>
-    /// 특정 위치 주변에 빈 공간이 있는지 확인
-    /// </summary>
-    public bool IsAdjacentSpaceAvailable(Vector3 bubbleCenter, Vector3 foundPosition)
-    {
-        if (Vector3.Distance(foundPosition, bubbleCenter) < 0.001f) return false;
-        
-        var (centerRow, centerCol) = WorldToGrid(bubbleCenter);
-        var (foundRow, foundCol) = WorldToGrid(foundPosition);
-        
-        // foundPosition이 bubbleCenter의 인접 위치인지 확인
-        var adjacent = GetAdjacentCells(centerRow, centerCol);
-        bool isAdjacent = false;
-        
-        foreach (var (row, col) in adjacent)
-        {
-            if (row == foundRow && col == foundCol)
-            {
-                isAdjacent = true;
-                break;
-            }
-        }
-        
-        // foundPosition이 인접 위치이고 비어있으면 true
-        if (isAdjacent && IsEmpty(foundRow, foundCol))
-        {
-            return true;
-        }
-        
-        // foundPosition이 인접 위치가 아니더라도, bubbleCenter 주변에 빈 공간이 있으면 true
-        foreach (var (row, col) in adjacent)
-        {
-            if (IsEmpty(row, col))
-                return true;
-        }
-        
-        return false;
-    }
 
-    /// <summary>
-    /// BubbleRadius 접근자 (호환성)
-    /// </summary>
-    public float BubbleRadius => bubbleRadius;
 }
