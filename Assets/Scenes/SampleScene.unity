@@ -1369,7 +1369,7 @@ GameObject:
   - component: {fileID: 748954957}
   - component: {fileID: 748954956}
   m_Layer: 0
-  m_Name: Circle (1)
+  m_Name: Right Point
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2147,8 +2147,6 @@ MonoBehaviour:
   cols: 11
   bubbleRadius: 0.25
   startPosition: {x: -2.6, y: 3}
-  useRandomTypes: 1
-  availableTypes: 010000000200000003000000
   ObjectPool: {fileID: 2032640466}
   HexMapBubbleDestroy: {fileID: 1558187229}
 --- !u!114 &1558187229
@@ -2187,7 +2185,7 @@ GameObject:
   - component: {fileID: 1573861652}
   - component: {fileID: 1573861651}
   m_Layer: 0
-  m_Name: Circle
+  m_Name: Left Point
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2689,11 +2687,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   spawnInterval: 0.5
+  maxBubblesPerSpawner: 16
   spawnerPoints:
   - {fileID: 1573861651}
   - {fileID: 748954956}
   hexMap: {fileID: 1558187228}
   objectPool: {fileID: 2032640466}
+  availableTypes: 010000000300000002000000
 --- !u!4 &2099572002
 Transform:
   m_ObjectHideFlags: 0

@@ -12,9 +12,6 @@ public class HexMap : MonoBehaviour
     [Header("Start Position")]
     [SerializeField] Vector2 startPosition = new Vector2(-2.6f, 3f);
 
-    [Header("Bubble Types")]
-    [SerializeField] bool useRandomTypes = true;
-    [SerializeField] BubbleTypes[] availableTypes;
 
     [Header("References")]
     public ObjectPool ObjectPool;
@@ -26,7 +23,6 @@ public class HexMap : MonoBehaviour
     private float hexWidth;
     private float hexHeight;
 
-    private int initBubbleCount = 66;
 
     // === Public Accessors ===
     public int Rows => rows;
@@ -86,39 +82,6 @@ public class HexMap : MonoBehaviour
         return new Vector3(x, y, 0f);
     }
 
-    // --------------------------------------------
-    // 초기 버블 생성
-    // --------------------------------------------
-    void SpawnInitialGrid()
-    {
-        for (int row = 0; row < rows; row++)
-        {
-            for (int col = 0; col < cols; col++)
-            {
-                if (initBubbleCount <= 0)
-                    break;
-
-                Bubble bubble = ObjectPool.SpawnBubble(GetRandomType());
-                if (bubble == null)
-                    continue;
-
-                // 월드 좌표 배치
-                Vector3 wPos = worldPositions[row, col];
-                bubble.transform.position = wPos;
-
-                // grid 등록
-                RegisterBubble(row, col, bubble);
-
-                initBubbleCount--;
-            }
-        }
-    }
-
-    BubbleTypes GetRandomType()
-    {
-        int idx = Random.Range(0, availableTypes.Length);
-        return availableTypes[idx];
-    }
 
     // --------------------------------------------
     // 버블 등록 / 해제
