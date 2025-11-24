@@ -93,6 +93,12 @@ public class HexMapBubbleDestroy : MonoBehaviour
             Bubble b = hexMapController.GetBubble(r, c);
             if (b == null) continue;
 
+            // 요정이 있으면 페어리 오브젝트 생성
+            if (b.IsFairy)
+            {
+                SpawnFairyAtPosition(b.transform.position);
+            }
+
             if (b.Anim != null)
                 b.DestroyBubble();  // 애니메이션 재생
 
@@ -118,6 +124,12 @@ public class HexMapBubbleDestroy : MonoBehaviour
             {
                 Bubble b = hexMapController.GetBubble(r, c);
                 if (b == null) continue;
+
+                // 요정이 있으면 페어리 오브젝트 생성
+                if (b.IsFairy)
+                {
+                    SpawnFairyAtPosition(b.transform.position);
+                }
 
                 if (b.Anim != null)
                     b.DestroyBubble();
@@ -255,5 +267,26 @@ public class HexMapBubbleDestroy : MonoBehaviour
         yield return new WaitForSeconds(delay);
         bubble.Rigid.bodyType = RigidbodyType2D.Kinematic;
         hexMapController.ObjectPool?.DespawnBubble(bubble);
+    }
+
+    /// <summary>
+    /// 버블 파괴 위치에서 페어리 오브젝트 생성
+    /// </summary>
+    private void SpawnFairyAtPosition(Vector3 position)
+    {
+        if (hexMapController.ObjectPool == null) return;
+        if (IngameManager.Instance == null || IngameManager.Instance.BossObj == null) return;
+
+        // ObjectPool에서 페어리 스폰
+        Fairy fairy = hexMapController.ObjectPool.SpawnFairy();
+        if (fairy != null)
+        {
+            // 버블 파괴 위치에 페어리 배치
+            fairy.transform.position = position;
+            
+            // Boss 위치로 날아가기
+            Vector3 bossPosition = IngameManager.Instance.BossObj.transform.position;
+            fairy.FlyToTarget(bossPosition);
+        }
     }
 }
