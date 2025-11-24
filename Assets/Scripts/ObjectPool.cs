@@ -17,7 +17,7 @@ public class ObjectPool : MonoBehaviour
         {
             if (!bubble.gameObject.activeSelf)
             {
-                bubble.SetBubbleType(type);
+                bubble.SetBubble(type);
                 bubble.gameObject.SetActive(true);
                 return bubble;
             }
@@ -33,7 +33,7 @@ public class ObjectPool : MonoBehaviour
     public Bubble AddedBubble(BubbleTypes type)
     {
         GameObject bubbleObj = Instantiate(Bubble, transform);
-        bubbleObj.GetComponent<Bubble>().SetBubbleType(type);
+        bubbleObj.GetComponent<Bubble>().SetBubble(type);
         BubbleList.Add(bubbleObj.GetComponent<Bubble>());
 
         return bubbleObj.GetComponent<Bubble>();

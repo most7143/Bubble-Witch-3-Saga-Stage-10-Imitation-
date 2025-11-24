@@ -2,6 +2,7 @@ public enum BubbleTypes
 {
 
     None,
+    
     //일반 버블 3종
     Red,
     Blue,
@@ -32,5 +33,23 @@ public enum BubbleRotationTypes
     None,
     Shot,
     Rotate,
+}
+
+public enum BattleState
+{
+    None,
+
+    Normal,
+
+    Shooting,
+
+    Destroying,
+
+
+    RespawnBubbles,
+
+    Reloading,
+
+    GameOver
 }
 

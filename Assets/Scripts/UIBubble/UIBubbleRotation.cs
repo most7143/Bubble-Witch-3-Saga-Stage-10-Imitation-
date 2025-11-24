@@ -4,13 +4,13 @@ using DG.Tweening;
 
 public class UIBubbleRotation : MonoBehaviour
 {
-   public bool IsRotating = false;
+    public bool IsRotating = false;
 
-     [Header("원형 배치 설정")]
+    [Header("원형 배치 설정")]
     [SerializeField] private float radius = 100f; // 원의 반지름
     [SerializeField] private float rotationDuration = 0.5f; // 회전 애니메이션 시간
     private Vector2 circleCenter;
- 
+
 
 
 
@@ -34,7 +34,7 @@ public class UIBubbleRotation : MonoBehaviour
     };
 
 
-     public void ArrangeBubblesInCircle(List<UIBubble> bubbles, Vector2 circleCenter)
+    public void ArrangeBubblesInCircle(List<UIBubble> bubbles, Vector2 circleCenter)
     {
         if (bubbles == null || bubbles.Count == 0)
             return;
@@ -62,86 +62,90 @@ public class UIBubbleRotation : MonoBehaviour
 
 
 
-   public void AnimateBubbleRotation(List<UIBubble> bubbles, BubbleRotationTypes rotationType)
-{
-    if (bubbles == null || bubbles.Count <= 1 || IsRotating) return;
-
-    IsRotating = true;
-
-    float[] targetAngles = GetBubbleAngles(bubbles.Count);
-    Sequence seq = DOTween.Sequence();
-
-    for (int i = 0; i < bubbles.Count; i++)
+    public void AnimateBubbleRotation(List<UIBubble> bubbles, BubbleRotationTypes rotationType)
     {
-        UIBubble bubble = bubbles[i];
-        if (bubble == null) continue;
+        if (bubbles == null || bubbles.Count <= 1 || IsRotating) return;
 
-        float startAngle = bubble.currentAngle;
-        float targetAngle = targetAngles[i];
+        IsRotating = true;
 
-        float angleDiff = targetAngle - startAngle;
+        float[] targetAngles = GetBubbleAngles(bubbles.Count);
+        Sequence seq = DOTween.Sequence();
 
-        // -180 ~ 180 범위로 정규화
-        while (angleDiff > 180f) angleDiff -= 360f;
-        while (angleDiff < -180f) angleDiff += 360f;
-
-        // 항상 반시계 방향으로 회전 (양수 각도)
-        if (angleDiff < 0f)
-        {
-            angleDiff += 360f;
-        }
-
-        seq.Join(DOTween.To(() => bubble.currentAngle,
-            currentMoveAngle =>
-            {
-                bubble.currentAngle = currentMoveAngle;
-                float rad = currentMoveAngle * Mathf.Deg2Rad;
-                Vector2 pos = circleCenter + new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * radius;
-
-                bubble.Rect.anchoredPosition = pos;
-            },
-            startAngle + angleDiff,
-            rotationDuration
-        ).SetEase(Ease.OutCubic));
-    }
-
-   // Shot 타입일 때: 회전이 끝난 후 비활성화된 버블 활성화 및 스케일 애니메이션
-if (rotationType == BubbleRotationTypes.Shot)
-{
-    seq.OnComplete(() =>
-    {
-        Sequence scaleSeq = DOTween.Sequence();
-        
-        // 비활성화된 버블 찾기 및 활성화
         for (int i = 0; i < bubbles.Count; i++)
         {
             UIBubble bubble = bubbles[i];
             if (bubble == null) continue;
-            
-            if (!bubble.gameObject.activeSelf)
+
+            float startAngle = bubble.currentAngle;
+            float targetAngle = targetAngles[i];
+
+            float angleDiff = targetAngle - startAngle;
+
+            // -180 ~ 180 범위로 정규화
+            while (angleDiff > 180f) angleDiff -= 360f;
+            while (angleDiff < -180f) angleDiff += 360f;
+
+            // 항상 반시계 방향으로 회전 (양수 각도)
+            if (angleDiff < 0f)
             {
-                // 첫 번째 버블(인덱스 0)은 선택 상태 (1.0), 나머지는 비선택 상태 (0.8)
-                Vector3 originalScale = (i == 0) ? bubble.SelectedScale : bubble.DeselectedScale;
-                
-                // 스케일을 0으로 설정하고 활성화
-                bubble.Rect.localScale = Vector3.zero;
-                bubble.gameObject.SetActive(true);
-                
-                // 스케일 애니메이션: 0부터 원래 크기로
-                scaleSeq.Join(bubble.Rect.DOScale(originalScale, rotationDuration)
-                    .SetEase(Ease.OutBack));
+                angleDiff += 360f;
             }
+
+            seq.Join(DOTween.To(() => bubble.currentAngle,
+                currentMoveAngle =>
+                {
+                    bubble.currentAngle = currentMoveAngle;
+                    float rad = currentMoveAngle * Mathf.Deg2Rad;
+                    Vector2 pos = circleCenter + new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * radius;
+
+                    bubble.Rect.anchoredPosition = pos;
+                },
+                startAngle + angleDiff,
+                rotationDuration
+            ).SetEase(Ease.OutCubic));
         }
-        
-        scaleSeq.OnComplete(() => IsRotating = false);
-    });
-}
-else
-{
-    // Rotate 타입일 때는 기존 로직 그대로
-    seq.OnComplete(() => IsRotating = false);
-}
-}
+
+        // Shot 타입일 때: 회전이 끝난 후 비활성화된 버블 활성화 및 스케일 애니메이션
+        if (rotationType == BubbleRotationTypes.Shot)
+        {
+            seq.OnComplete(() =>
+            {
+                Sequence scaleSeq = DOTween.Sequence();
+
+                // 모든 버블에 대해 스케일 애니메이션 적용
+                for (int i = 0; i < bubbles.Count; i++)
+                {
+                    UIBubble bubble = bubbles[i];
+                    if (bubble == null) continue;
+
+                    Vector3 targetScale = (i == 0) ? bubble.SelectedScale : bubble.DeselectedScale;
+                    
+                    if (!bubble.gameObject.activeSelf)
+                    {
+                        // 비활성화된 버블: 스케일을 0으로 설정하고 활성화
+                        bubble.Rect.localScale = Vector3.zero;
+                        bubble.gameObject.SetActive(true);
+                    }
+                    else
+                    {
+                        // 이미 활성화된 버블: 현재 스케일에서 목표 스케일로 애니메이션
+                        // (현재 스케일이 잘못 설정되어 있을 수 있으므로)
+                    }
+                    
+                    // 스케일 애니메이션: 현재 스케일에서 목표 스케일로
+                    scaleSeq.Join(bubble.Rect.DOScale(targetScale, rotationDuration)
+                        .SetEase(Ease.OutBack));
+                }
+
+                scaleSeq.OnComplete(() => IsRotating = false);
+            });
+        }
+        else
+        {
+            // Rotate 타입일 때는 기존 로직 그대로
+            seq.OnComplete(() => IsRotating = false);
+        }
+    }
 
     public float[] GetBubbleAngles(int count)
     {

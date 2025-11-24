@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Collections;
+using DG.Tweening; // DOTween 추가
 
 public class Bubble : MonoBehaviour
 {
@@ -9,6 +10,11 @@ public class Bubble : MonoBehaviour
     public SpriteRenderer SpriteRenderer;
 
     public Animator Anim;
+
+
+    public bool IsFairy = false;
+
+    public SpriteRenderer FairySpriteRenderer;
 
     [SerializeField] private BubbleTypes Type = BubbleTypes.Red;
 
@@ -19,30 +25,46 @@ public class Bubble : MonoBehaviour
     private HexMap hexMap;
 
     public BubbleTypes GetBubbleType() => Type;
-    public void SetBubbleType(BubbleTypes type)
+    public void SetBubble(BubbleTypes type)
     {
         Type = type;
+        SetFairy();
         UpdateVisual();
     }
 
+    private Sequence fairyAnimationSequence; 
+
     void OnDestroy()
     {
+        // 애니메이션 정리
+        if (fairyAnimationSequence != null && fairyAnimationSequence.IsActive())
+        {
+            fairyAnimationSequence.Kill();
+        }
+        
         UnregisterFromHexMap();
     }
 
     /// <summary>
     /// 헥사맵에 버블 등록
     /// </summary>
-    private void RegisterToHexMap()
-    {
-        if (hexMap == null)
-            hexMap = FindObjectOfType<HexMap>();
+  
 
-        if (hexMap != null && hexRow >= 0 && hexCol >= 0)
+    public void SetFairy()
+    {
+        float chance = Random.Range(0f, 1f);
+        if(chance < 0.3f)
         {
-            hexMapPosition = transform.position;
-            hexMap.RegisterBubble(hexRow, hexCol, this);
+            IsFairy = true;
+            FairySpriteRenderer.gameObject.SetActive(true);
+            FairyAnimation();
         }
+        else
+        {
+            IsFairy = false;
+            FairySpriteRenderer.gameObject.SetActive(false);
+        }
+
     }
 
     /// <summary>
@@ -71,24 +93,7 @@ public class Bubble : MonoBehaviour
     /// </summary>
     public Vector3 GetHexMapPosition() => hexMapPosition;
 
-    /// <summary>
-    /// 위치가 변경되었을 때 호출 (외부에서 호출)
-    /// </summary>
-    public void UpdateHexMapPosition(Vector3 newPosition)
-    {
-        if (hexMap == null)
-            hexMap = FindObjectOfType<HexMap>();
-
-        if (hexMap != null)
-        {
-            UnregisterFromHexMap();
-            hexMapPosition = newPosition;
-            var (row, col) = hexMap.WorldToGrid(newPosition);
-            hexRow = row;
-            hexCol = col;
-            RegisterToHexMap();
-        }
-    }
+  
 
     void UpdateVisual()
     {
@@ -125,6 +130,75 @@ public class Bubble : MonoBehaviour
     public void DestroyBubble()
     {
         Anim.SetTrigger("Bomb");
+    }
+
+
+    public void FairyAnimation()
+    {
+        if(IsFairy && FairySpriteRenderer != null)
+        {
+            // 기존 애니메이션이 있으면 정리
+            if (fairyAnimationSequence != null && fairyAnimationSequence.IsActive())
+            {
+                fairyAnimationSequence.Kill();
+            }
+
+            // 요정 스프라이트의 초기 위치 저장 (버블 중심 기준)
+            Vector3 startPosition = FairySpriteRenderer.transform.localPosition;
+            
+            // 애니메이션 시퀀스 생성
+            fairyAnimationSequence = DOTween.Sequence();
+            
+            // 랜덤하게 이동하는 애니메이션 반복
+            CreateFairyMovement(fairyAnimationSequence, startPosition);
+            
+            // 무한 반복
+            fairyAnimationSequence.SetLoops(-1);
+        }
+    }
+
+    /// <summary>
+    /// 요정 이동 애니메이션 생성 (랜덤하게 주변을 이동)
+    /// </summary>
+    private void CreateFairyMovement(Sequence sequence, Vector3 basePosition)
+    {
+        float minRadius = 0.15f;
+        float maxRadius = 0.35f;
+        float radius = Random.Range(minRadius, maxRadius);
+
+        // 반경에 비례해 한 바퀴 도는 시간도 길어지도록 비율 적용
+        float baseDuration = 4f; // 반경 minRadius일 때 기준
+        float revolutionDuration = baseDuration * (radius / minRadius);
+
+        int waypointCount = 16;          
+        bool clockwise = Random.value < 0.5f;
+
+        float angleStep = (360f / waypointCount) * (clockwise ? -1f : 1f);
+        float startAngle = Random.Range(0f, 360f);
+
+        Vector3 firstPoint = basePosition + new Vector3(
+            Mathf.Cos(startAngle * Mathf.Deg2Rad) * radius,
+            Mathf.Sin(startAngle * Mathf.Deg2Rad) * radius,
+            0f
+        );
+        FairySpriteRenderer.transform.localPosition = firstPoint;
+
+        for (int i = 1; i <= waypointCount; i++)
+        {
+            float angle = (startAngle + angleStep * i) * Mathf.Deg2Rad;
+            Vector3 target = basePosition + new Vector3(
+                Mathf.Cos(angle) * radius,
+                Mathf.Sin(angle) * radius,
+                0f
+            );
+
+            sequence.Append(
+                FairySpriteRenderer.transform.DOLocalMove(target, revolutionDuration / waypointCount)
+                    .SetEase(Ease.Linear)
+            );
+        }
+
+        sequence.AppendCallback(() => FairySpriteRenderer.transform.localPosition = firstPoint);
     }
 
    

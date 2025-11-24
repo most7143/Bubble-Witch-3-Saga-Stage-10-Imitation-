@@ -40,7 +40,16 @@ public class UIBubbleAim : MonoBehaviour
 
     void Update()
     {
-        if (IsAiming)
+
+        // Normal 상태가 아니면 조준 불가 (Shooting, Destroying, RespawnBubbles 등)
+        if(IngameManager.Instance.CurrentState != BattleState.Normal)
+        {
+            IsAiming=false;
+            return;
+        }
+
+
+        if (IsAiming||Shooter.CurrentBubble.gameObject.activeSelf == false)
         {
             UpdateAim();
         }

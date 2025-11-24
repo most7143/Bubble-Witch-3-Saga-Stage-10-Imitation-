@@ -70,7 +70,8 @@ public class UIBubbleShooter : MonoBehaviour
 
     public void ClickShooter()
     {
-        if (BubbleRotation.IsRotating) return;
+        // Normal 상태가 아니면 발사 불가 (Shooting, Destroying, RespawnBubbles 등)
+        if (BubbleRotation.IsRotating || IngameManager.Instance.CurrentState != BattleState.Normal) return;
 
         UpdateSelectedBubble();  // 선택 갱신
 
@@ -90,18 +91,21 @@ public class UIBubbleShooter : MonoBehaviour
         Bubbles.RemoveAt(0);
         Bubbles.Add(first);
 
-
         BubbleTypes[] randomTypes = { BubbleTypes.Red, BubbleTypes.Blue, BubbleTypes.Yellow };
         BubbleTypes newType = randomTypes[Random.Range(0, randomTypes.Length)];
         first.SetType(newType);
 
-        // 새로운 버블을 선택하고 바로 보이게 함
+        // 새로 장전될 버블을 즉시 선택 상태로 표시
         SelectBubble(Bubbles[0]);
-        CurrentBubble?.gameObject.SetActive(true);
+        CurrentBubble = Bubbles[0];
+        CurrentBubble.gameObject.SetActive(true);
 
-        // 나머지 버블 비선택
+        // 나머지 버블은 비선택 상태 유지
         for (int i = 1; i < Bubbles.Count; i++)
+        {
+            Bubbles[i].gameObject.SetActive(true);
             DeselectBubble(Bubbles[i]);
+        }
     }
 
    
@@ -132,8 +136,16 @@ public class UIBubbleShooter : MonoBehaviour
         bubble.Rect.localScale = bubble.SelectedScale;
     }
 
-    private void DeselectBubble(UIBubble bubble)
+    public void DeselectBubble(UIBubble bubble)
     {
         bubble.Rect.localScale = bubble.DeselectedScale;
+    }
+
+    public void UnselectBubble()
+    {
+        if (CurrentBubble != null)
+        {
+            CurrentBubble.gameObject.SetActive(false);
+        }
     }
 }

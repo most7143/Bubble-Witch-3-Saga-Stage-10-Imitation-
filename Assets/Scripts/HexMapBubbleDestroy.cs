@@ -32,7 +32,17 @@ public class HexMapBubbleDestroy : MonoBehaviour
         foreach (var level in levels)
             totalCount += level.Count;
 
-        if (totalCount < 3) return;
+        if (totalCount < 3)
+        {
+            // 매치가 없으면 Reloading 상태로 전환
+            if (IngameManager.Instance.CurrentState == BattleState.Shooting)
+            {
+                IngameManager.Instance.ChangeState(BattleState.Reloading);
+            }
+            return;
+        }
+
+        IngameManager.Instance.ChangeState(BattleState.Destroying);
 
         // 터질 버블들을 HashSet으로 수집 (고립 버블 미리 계산용)
         HashSet<(int r, int c)> toRemove = new HashSet<(int r, int c)>();
@@ -65,11 +75,12 @@ public class HexMapBubbleDestroy : MonoBehaviour
             }
             else
             {
-                // 고립 버블이 없으면 바로 알림
-                if (bubbleSpawner != null)
+                // 고립 버블이 없으면 Reloading 상태로 전환 (파괴가 없으므로)
+                if (IngameManager.Instance.CurrentState == BattleState.Destroying)
                 {
-                    bubbleSpawner.OnBubblesDestroyed();
+                    IngameManager.Instance.ChangeState(BattleState.Reloading);
                 }
+                // 재배치는 Reloading 상태가 끝난 후에 처리됨
             }
         }
     }
@@ -125,14 +136,18 @@ public class HexMapBubbleDestroy : MonoBehaviour
     private IEnumerator DestroyByWaveAndNotify(List<List<(int r, int c)>> levels, List<(int r, int c)> floatingBubbles)
     {
         yield return StartCoroutine(DestroyByWave(levels, floatingBubbles));
-
+        
         // 고립 버블 제거
         if (floatingBubbles.Count > 0)
         {
             yield return StartCoroutine(RemoveFloatingBubblesSpread(floatingBubbles));
+            
+            // 떨어진 버블들이 완전히 삭제될 때까지 대기 (DestroyBubbleAfterDelay가 3초 후 삭제)
+            yield return new WaitForSeconds(3f);
         }
-
-        // 버블 파괴 완료 후 BubbleSpawner에 알림
+        
+        // 파괴가 완료되었으므로 RespawnBubbles 상태로 전환 (재배치를 위해)
+        // 이 상태는 BubbleSpawner에서 Normal로 전환됨
         if (bubbleSpawner != null)
         {
             bubbleSpawner.OnBubblesDestroyed();
@@ -209,7 +224,10 @@ public class HexMapBubbleDestroy : MonoBehaviour
     private IEnumerator RemoveFloatingBubblesAndNotify(List<(int r, int c)> floatingList)
     {
         yield return StartCoroutine(RemoveFloatingBubblesSpread(floatingList));
-
+        
+        // 떨어진 버블들이 완전히 삭제될 때까지 대기 (DestroyBubbleAfterDelay가 3초 후 삭제)
+        yield return new WaitForSeconds(3f);
+        
         // 버블 파괴 완료 후 BubbleSpawner에 알림
         if (bubbleSpawner != null)
         {
