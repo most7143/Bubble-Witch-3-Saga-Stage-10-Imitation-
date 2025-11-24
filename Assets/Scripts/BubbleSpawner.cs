@@ -14,36 +14,38 @@ public class BubbleSpawner : MonoBehaviour
     [Header("Spawner Settings")]
     [SerializeField] private float spawnInterval = 2f; // 버블 생성 간격
     [SerializeField] private int maxBubblesPerSpawner = 16; // 스포너별 최대 버블 개수
-    
+    [SerializeField] private float moveSpeed = 0.2f; // 버블 이동 속도 (초)
+    [SerializeField] private float refillDelay = 2f; // 버블 파괴 후 재생성 지연시간
+
     [Header("Spawner Points")]
     [SerializeField] private List<SpawnerPoint> spawnerPoints = new List<SpawnerPoint>();
-    
+
     [Header("References")]
     [SerializeField] private HexMap hexMap;
     [SerializeField] private ObjectPool objectPool;
-    
+
     [SerializeField] private BubbleTypes[] availableTypes;
-    
+
     private bool isSpawning = false;
-    
-    // 각 스포너별로 생성한 버블들을 저장 (버블, 경로 인덱스)
-    private Dictionary<SpawnerPoint, List<(Bubble bubble, int pathIndex)>> spawnerBubbles = 
-        new Dictionary<SpawnerPoint, List<(Bubble, int)>>();
-    
+
+    // 각 스포너별로 생성한 버블들을 저장 (버블, 경로 인덱스, 현재 row, col)
+    private Dictionary<SpawnerPoint, List<(Bubble bubble, int pathIndex, int currentRow, int currentCol)>> spawnerBubbles =
+        new Dictionary<SpawnerPoint, List<(Bubble, int, int, int)>>();
+
     // 각 스포너별 첫 번째 버블의 이동 경로 저장 (row, col)
-    private Dictionary<SpawnerPoint, List<(int row, int col)>> spawnerPaths = 
+    private Dictionary<SpawnerPoint, List<(int row, int col)>> spawnerPaths =
         new Dictionary<SpawnerPoint, List<(int, int)>>();
-    
+
     // 각 스포너별 첫 번째 버블의 현재 상태
-    private Dictionary<SpawnerPoint, (int currentRow, int currentCol, BubbleMoveDirection direction, int moveCountInRow)> firstBubbleState = 
+    private Dictionary<SpawnerPoint, (int currentRow, int currentCol, BubbleMoveDirection direction, int moveCountInRow)> firstBubbleState =
         new Dictionary<SpawnerPoint, (int, int, BubbleMoveDirection, int)>();
-    
+
     void Start()
     {
         InitializeSpawners();
         StartSpawning();
     }
-    
+
     private void InitializeSpawners()
     {
         foreach (var spawner in spawnerPoints)
@@ -52,18 +54,18 @@ public class BubbleSpawner : MonoBehaviour
             {
                 spawner.UpdatePosition();
                 // 각 스포너별 버블 리스트 초기화
-                spawnerBubbles[spawner] = new List<(Bubble, int)>();
+                spawnerBubbles[spawner] = new List<(Bubble, int, int, int)>();
                 // 각 스포너별 경로 초기화
                 spawnerPaths[spawner] = new List<(int, int)>();
             }
         }
     }
-    
+
     public void StartSpawning()
     {
         if (isSpawning) return;
         isSpawning = true;
-        
+
         foreach (var spawner in spawnerPoints)
         {
             if (spawner != null)
@@ -72,13 +74,96 @@ public class BubbleSpawner : MonoBehaviour
             }
         }
     }
-    
+
     public void StopSpawning()
     {
         isSpawning = false;
         StopAllCoroutines();
     }
-    
+
+    /// <summary>
+    /// 버블 파괴 후 재생성 (외부에서 호출)
+    /// </summary>
+    public void OnBubblesDestroyed()
+    {
+        StartCoroutine(RefillBubblesAfterDelay());
+    }
+
+    /// <summary>
+    /// 지연시간 후 각 스포너의 버블 수를 확인하고 부족한 만큼 채움
+    /// </summary>
+    private IEnumerator RefillBubblesAfterDelay()
+    {
+        yield return new WaitForSeconds(refillDelay);
+
+        // 파괴된 버블 제거
+        RemoveDestroyedBubbles();
+
+        // 각 스포너별로 버블 수 확인 및 재생성
+        foreach (var spawner in spawnerPoints)
+        {
+            if (spawner == null) continue;
+
+            int currentCount = spawnerBubbles.ContainsKey(spawner) ? spawnerBubbles[spawner].Count : 0;
+            int neededCount = maxBubblesPerSpawner - currentCount;
+
+            // 부족한 만큼 버블 생성
+            for (int i = 0; i < neededCount; i++)
+            {
+                SpawnSingleBubble(spawner);
+                yield return new WaitForSeconds(0.1f); // 버블 생성 간격
+            }
+        }
+    }
+
+    /// <summary>
+    /// 파괴된 버블을 spawnerBubbles에서 제거
+    /// </summary>
+    private void RemoveDestroyedBubbles()
+    {
+        foreach (var spawner in spawnerPoints)
+        {
+            if (spawner == null || !spawnerBubbles.ContainsKey(spawner)) continue;
+
+            var bubbles = spawnerBubbles[spawner];
+            List<int> indicesToRemove = new List<int>();
+
+            for (int i = 0; i < bubbles.Count; i++)
+            {
+                var (bubble, pathIndex, currentRow, currentCol) = bubbles[i];
+
+                // 버블이 비활성화되었거나 null이면 제거
+                if (bubble == null || !bubble.gameObject.activeSelf)
+                {
+                    // hexMap에서 해제
+                    if (currentRow >= 0 && currentCol >= 0)
+                    {
+                        hexMap.UnregisterBubble(currentRow, currentCol);
+                    }
+                    indicesToRemove.Add(i);
+                    continue;
+                }
+
+                // hexMap에 등록되지 않은 버블도 제거 (고립 버블이 떨어질 때)
+                if (currentRow >= 0 && currentCol >= 0)
+                {
+                    Bubble registeredBubble = hexMap.GetBubble(currentRow, currentCol);
+                    if (registeredBubble != bubble)
+                    {
+                        // hexMap에 해당 버블이 등록되어 있지 않으면 제거
+                        indicesToRemove.Add(i);
+                    }
+                }
+            }
+
+            // 역순으로 제거
+            for (int i = indicesToRemove.Count - 1; i >= 0; i--)
+            {
+                bubbles.RemoveAt(indicesToRemove[i]);
+            }
+        }
+    }
+
     private IEnumerator SpawnBubblesRoutine(SpawnerPoint spawner)
     {
         while (isSpawning)
@@ -87,60 +172,62 @@ public class BubbleSpawner : MonoBehaviour
             SpawnSingleBubble(spawner);
         }
     }
-    private void SpawnSingleBubble(SpawnerPoint spawner)
+ private void SpawnSingleBubble(SpawnerPoint spawner)
+{
+    // 기존 버블 이동 (MoveSpawnerBubbles)
+    MoveSpawnerBubbles(spawner);
+
+    int currentBubbleCount = spawnerBubbles[spawner].Count;
+    if (currentBubbleCount >= maxBubblesPerSpawner)
+        return;
+
+    BubbleTypes type = GetRandomBubbleType();
+    Bubble bubble = objectPool.SpawnBubble(type);
+
+    // ① 무조건 스폰 포인트에서 보여주기 시작
+    Vector3 spawnPosition = spawner.transform.position;
+    bubble.transform.position = spawnPosition;
+
+    // ② hexMap 좌표 계산
+    var (spawnRow, spawnCol) = hexMap.WorldToGrid(spawnPosition);
+
+    if (spawnerBubbles[spawner].Count == 0)
     {
-        // 새 버블 생성 전에 이 스포너가 생성한 모든 버블을 한 칸씩 이동
-        MoveSpawnerBubbles(spawner);
-        
-        // 최대 버블 개수 확인
-        int currentBubbleCount = spawnerBubbles[spawner].Count;
-        if (currentBubbleCount >= maxBubblesPerSpawner)
-        {
-            // 최대 개수에 도달했으므로 생성하지 않음
-            return;
-        }
-        
-        BubbleTypes type = GetRandomBubbleType();
-        Bubble bubble = objectPool.SpawnBubble(type);
-        
-        // 스폰 포인트의 헥스맵 위치 계산
-        var (spawnRow, spawnCol) = hexMap.WorldToGrid(spawner.transform.position);
-        
-        // 첫 번째 버블인지 확인
-        if (spawnerBubbles[spawner].Count == 0)
-        {
-            // 첫 번째 버블: 경로를 생성하고 저장
-            var (nextRow, nextCol) = CalculateNextPositionForFirstBubble(spawnRow, spawnCol, spawner);
-            
-            // 경로에 추가
-            spawnerPaths[spawner].Add((nextRow, nextCol));
-            
-            // 버블 배치
-            Vector3 spawnPosition = hexMap.Positions[nextRow, nextCol];
-            bubble.transform.position = spawnPosition;
-            
-            // 첫 번째 버블 상태 저장
-            BubbleMoveDirection direction = spawner.IsLeftSpawner ? BubbleMoveDirection.Left : BubbleMoveDirection.Right;
-            int moveCount = 1; // 첫 번째 이동이므로 1부터 시작
-            firstBubbleState[spawner] = (nextRow, nextCol, direction, moveCount);
-            
-            // 버블 리스트에 추가 (경로 인덱스 0)
-            spawnerBubbles[spawner].Add((bubble, 0));
-        }
-        else
-        {
-            // 나머지 버블: 경로의 첫 번째 위치에 배치
-            if (spawnerPaths[spawner].Count > 0)
-            {
-                var (pathRow, pathCol) = spawnerPaths[spawner][0];
-                Vector3 spawnPosition = hexMap.Positions[pathRow, pathCol];
-                bubble.transform.position = spawnPosition;
-                
-                // 버블 리스트에 추가 (경로 인덱스 0)
-                spawnerBubbles[spawner].Add((bubble, 0));
-            }
-        }
+        // 첫 번째 버블
+        var (nextRow, nextCol) = CalculateNextPositionForFirstBubble(spawnRow, spawnCol, spawner);
+
+        // 경로 등록
+        spawnerPaths[spawner].Add((nextRow, nextCol));
+
+        BubbleMoveDirection direction = spawner.IsLeftSpawner ?
+            BubbleMoveDirection.Left : BubbleMoveDirection.Right;
+
+        firstBubbleState[spawner] = (nextRow, nextCol, direction, 1);
+
+        // 첫 번째 버블은 생성 직후 hexMap에 등록 (pathIndex 0, 첫 목표 위치에 등록)
+        hexMap.RegisterBubble(nextRow, nextCol, bubble, false);
+        spawnerBubbles[spawner].Add((bubble, 0, nextRow, nextCol));
+
+        // 스폰 포인트 → 첫 경로 칸 자연스럽게 이동
+        StartCoroutine(MoveBubbleSmoothly(bubble, nextRow, nextCol));
     }
+    else
+    {
+        // 두 번째 이후 버블
+        // 첫 번째 경로 위치를 가져와서 부드럽게 이동
+        var (pathRow, pathCol) = spawnerPaths[spawner][0];
+
+        // 두 번째 버블도 생성 직후 hexMap에 등록 (pathIndex 0, 첫 목표 위치에 등록)
+        hexMap.RegisterBubble(pathRow, pathCol, bubble, false);
+        spawnerBubbles[spawner].Add((bubble, 0, pathRow, pathCol));
+
+        // 부드럽게 이동
+        StartCoroutine(MoveBubbleSmoothly(bubble, pathRow, pathCol));
+    }
+}
+
+
+
     private BubbleTypes GetRandomBubbleType()
     {
         return availableTypes[Random.Range(0, availableTypes.Length)];
@@ -153,44 +240,64 @@ public class BubbleSpawner : MonoBehaviour
     {
         if (!spawnerBubbles.ContainsKey(spawner) || spawnerBubbles[spawner].Count == 0)
             return;
-        
+
         var bubbles = spawnerBubbles[spawner];
-        
+
         // 최대 버블 개수에 도달했으면 이동 중단
         if (bubbles.Count >= maxBubblesPerSpawner)
         {
             return;
         }
-        
+
         var path = spawnerPaths[spawner];
-        
+
         // 첫 번째 버블의 경로 업데이트
         if (bubbles.Count > 0 && firstBubbleState.ContainsKey(spawner))
         {
             UpdateFirstBubblePath(spawner);
         }
-        
+
         // 제거할 인덱스들을 저장
         List<int> indicesToRemove = new List<int>();
-        
+
         // 모든 버블을 경로를 따라 한 칸씩 이동
         for (int i = 0; i < bubbles.Count; i++)
         {
-            var (bubble, pathIndex) = bubbles[i];
-            
+            var (bubble, pathIndex, currentRow, currentCol) = bubbles[i];
+
             // 버블이 비활성화되었거나 null이면 나중에 제거
             if (bubble == null || !bubble.gameObject.activeSelf)
             {
+                // 이전 위치에서 hexMap 해제
+                if (currentRow >= 0 && currentCol >= 0)
+                {
+                    hexMap.UnregisterBubble(currentRow, currentCol);
+                }
                 indicesToRemove.Add(i);
                 continue;
             }
-            
+
+            // pathIndex가 0이고 currentRow가 -1이면 첫 번째 목표 위치(path[0])에 등록
+            if (pathIndex == 0 && currentRow == -1 && path.Count > 0)
+            {
+                var (firstRow, firstCol) = path[0];
+                hexMap.RegisterBubble(firstRow, firstCol, bubble, false);
+                bubbles[i] = (bubble, pathIndex, firstRow, firstCol);
+                continue;
+            }
+
             // 경로 인덱스 증가
             int nextPathIndex = pathIndex + 1;
-            
+
             // 경로의 끝에 도달했는지 확인
             if (nextPathIndex >= path.Count)
             {
+                // 이전 위치에서 hexMap 해제
+                if (currentRow >= 0 && currentCol >= 0)
+                {
+                    hexMap.UnregisterBubble(currentRow, currentCol);
+                }
+
                 // 경로의 마지막 위치에 고정
                 if (path.Count > 0)
                 {
@@ -200,20 +307,30 @@ public class BubbleSpawner : MonoBehaviour
                 indicesToRemove.Add(i);
                 continue;
             }
-            
-            // 다음 경로 위치로 이동
+
+            // 다음 경로 위치로 이동 (부드럽게)
             var (nextRow, nextCol) = path[nextPathIndex];
-            MoveBubbleToPosition(bubble, nextRow, nextCol, BubbleMoveDirection.Left);
-            bubbles[i] = (bubble, nextPathIndex);
+
+            // 이전 위치에서 hexMap 해제
+            if (currentRow >= 0 && currentCol >= 0)
+            {
+                hexMap.UnregisterBubble(currentRow, currentCol);
+            }
+
+            // 새 위치에 hexMap 등록 (checkMatches = false, 이동 중이므로)
+            hexMap.RegisterBubble(nextRow, nextCol, bubble, false);
+
+            StartCoroutine(MoveBubbleSmoothly(bubble, nextRow, nextCol));
+            bubbles[i] = (bubble, nextPathIndex, nextRow, nextCol);
         }
-        
+
         // 역순으로 제거하여 인덱스 문제 방지
         for (int i = indicesToRemove.Count - 1; i >= 0; i--)
         {
             bubbles.RemoveAt(indicesToRemove[i]);
         }
     }
-    
+
     /// <summary>
     /// 첫 번째 버블의 경로를 업데이트
     /// </summary>
@@ -221,23 +338,23 @@ public class BubbleSpawner : MonoBehaviour
     {
         if (!firstBubbleState.ContainsKey(spawner))
             return;
-        
+
         var (currentRow, currentCol, direction, moveCount) = firstBubbleState[spawner];
         var path = spawnerPaths[spawner];
-        
+
         // 현재 행의 이동 횟수 제한 확인
         int maxMoves = GetMoveCountForRow(currentRow);
-        
+
         if (moveCount >= maxMoves)
         {
             // 이동 횟수를 모두 사용했으므로 아래로 이동
             var (downRow, downCol) = CalculateDownPosition(currentRow, currentCol, direction);
-            
-            if (hexMap.IsValidCell(downRow, downCol))
+
+            if (hexMap.IsValidCell(downRow, downCol) && hexMap.IsEmpty(downRow, downCol))
             {
                 // 경로에 추가
                 path.Add((downRow, downCol));
-                
+
                 // 홀수행에 도착했는지 확인
                 if (downRow % 2 == 1)
                 {
@@ -262,12 +379,12 @@ public class BubbleSpawner : MonoBehaviour
         {
             // 현재 방향으로 한 칸 이동
             var (nextRow, nextCol) = CalculateNextPositionInDirection(currentRow, currentCol, direction);
-            
-            if (hexMap.IsValidCell(nextRow, nextCol))
+
+            if (hexMap.IsValidCell(nextRow, nextCol) && hexMap.IsEmpty(nextRow, nextCol))
             {
                 // 경로에 추가
                 path.Add((nextRow, nextCol));
-                
+
                 // 행이 바뀌었는지 확인
                 if (nextRow != currentRow)
                 {
@@ -291,11 +408,11 @@ public class BubbleSpawner : MonoBehaviour
             {
                 // 범위를 벗어나면 아래로 이동
                 var (downRow, downCol) = CalculateDownPosition(currentRow, currentCol, direction);
-                
-                if (hexMap.IsValidCell(downRow, downCol))
+
+                if (hexMap.IsValidCell(downRow, downCol) && hexMap.IsEmpty(downRow, downCol))
                 {
                     path.Add((downRow, downCol));
-                    
+
                     // 홀수행에 도착했는지 확인
                     if (downRow % 2 == 1)
                     {
@@ -316,7 +433,7 @@ public class BubbleSpawner : MonoBehaviour
             }
         }
     }
-    
+
     /// <summary>
     /// 첫 번째 버블의 다음 위치 계산
     /// </summary>
@@ -325,7 +442,7 @@ public class BubbleSpawner : MonoBehaviour
         BubbleMoveDirection direction = spawner.IsLeftSpawner ? BubbleMoveDirection.Left : BubbleMoveDirection.Right;
         return CalculateNextPositionInDirection(row, col, direction);
     }
-    
+
     /// <summary>
     /// 방향에 따른 다음 위치 계산
     /// </summary>
@@ -341,7 +458,7 @@ public class BubbleSpawner : MonoBehaviour
                 return (row, col);
         }
     }
-    
+
     /// <summary>
     /// 아래로 이동할 때의 위치 계산
     /// </summary>
@@ -349,7 +466,7 @@ public class BubbleSpawner : MonoBehaviour
     {
         int nextRow = row + 1;
         bool isEvenRow = (row % 2 == 0);
-        
+
         if (direction == BubbleMoveDirection.Left)
         {
             if (isEvenRow)
@@ -373,7 +490,7 @@ public class BubbleSpawner : MonoBehaviour
             }
         }
     }
-    
+
     /// <summary>
     /// 행별 이동 횟수 제한 가져오기
     /// </summary>
@@ -392,20 +509,49 @@ public class BubbleSpawner : MonoBehaviour
             return 4; // 짝수행: 4개
         }
     }
-    
-    
+
+
     /// <summary>
-    /// 버블을 특정 위치로 이동
+    /// 버블을 특정 위치로 부드럽게 이동
+    /// </summary>
+    private IEnumerator MoveBubbleSmoothly(Bubble bubble, int row, int col)
+    {
+        if (!hexMap.IsValidCell(row, col) || bubble == null)
+            yield break;
+
+        Vector3 targetPosition = hexMap.Positions[row, col];
+        Vector3 startPosition = bubble.transform.position;
+        float elapsedTime = 0f;
+
+        while (elapsedTime < moveSpeed && bubble != null)
+        {
+            elapsedTime += Time.deltaTime;
+            float t = elapsedTime / moveSpeed;
+
+            // 부드러운 이동을 위한 Lerp
+            bubble.transform.position = Vector3.Lerp(startPosition, targetPosition, t);
+            yield return null;
+        }
+
+        // 최종 위치 보정
+        if (bubble != null)
+        {
+            bubble.transform.position = targetPosition;
+        }
+    }
+
+    /// <summary>
+    /// 버블을 특정 위치로 즉시 이동 (레거시 메서드)
     /// </summary>
     private void MoveBubbleToPosition(Bubble bubble, int row, int col, BubbleMoveDirection direction)
     {
         if (!hexMap.IsValidCell(row, col))
             return;
-        
+
         Vector3 targetPosition = hexMap.Positions[row, col];
         bubble.transform.position = targetPosition;
     }
-    
+
     /// <summary>
     /// 버블을 헥스맵에 고정 (이동 종료)
     /// </summary>
@@ -413,7 +559,7 @@ public class BubbleSpawner : MonoBehaviour
     {
         if (!hexMap.IsValidCell(row, col))
             return;
-        
+
         // 위치가 비어있지 않으면 인접한 빈 공간 찾기
         if (!hexMap.IsEmpty(row, col))
         {
@@ -421,12 +567,12 @@ public class BubbleSpawner : MonoBehaviour
             row = emptyRow;
             col = emptyCol;
         }
-        
+
         // 버블 위치 설정
         Vector3 targetPosition = hexMap.Positions[row, col];
         bubble.transform.position = targetPosition;
-        
-        // 헥스맵에 등록
-        bubble.UpdateHexMapPosition(targetPosition);
+
+        // 헥스맵에 등록 (checkMatches = true로 설정하여 매치 체크 실행)
+        hexMap.RegisterBubble(row, col, bubble, true);
     }
 }

@@ -5,14 +5,16 @@ using System.Collections;
 public class HexMapBubbleDestroy : MonoBehaviour
 {
     private HexMap hexMapController;
+    private BubbleSpawner bubbleSpawner;
 
     public void Initialize(HexMap hexMap)
     {
         hexMapController = hexMap;
+        bubbleSpawner = FindObjectOfType<BubbleSpawner>();
     }
 
 
-  
+
 
     // ================================================================
     // 착지 후 호출: 동일 타입 3개 이상이면 레벨별 전파식으로 팝
@@ -52,14 +54,23 @@ public class HexMapBubbleDestroy : MonoBehaviour
         if (levels.Count > 1)
         {
             List<List<(int r, int c)>> remainingLevels = levels.GetRange(1, levels.Count - 1);
-            StartCoroutine(DestroyByWave(remainingLevels, floatingBubbles));
-            RemoveFloatingBubbles(floatingBubbles);
+            StartCoroutine(DestroyByWaveAndNotify(remainingLevels, floatingBubbles));
         }
         else
         {
             // 레벨이 1개뿐이면 고립 버블만 처리
             if (floatingBubbles.Count > 0)
-                RemoveFloatingBubbles(floatingBubbles);
+            {
+                StartCoroutine(RemoveFloatingBubblesAndNotify(floatingBubbles));
+            }
+            else
+            {
+                // 고립 버블이 없으면 바로 알림
+                if (bubbleSpawner != null)
+                {
+                    bubbleSpawner.OnBubblesDestroyed();
+                }
+            }
         }
     }
 
@@ -106,8 +117,26 @@ public class HexMapBubbleDestroy : MonoBehaviour
 
             yield return new WaitForSeconds(delayPerLevel);
         }
+    }
 
-    
+    /// <summary>
+    /// 파동 처리와 고립 버블 제거를 모두 완료한 후 알림
+    /// </summary>
+    private IEnumerator DestroyByWaveAndNotify(List<List<(int r, int c)>> levels, List<(int r, int c)> floatingBubbles)
+    {
+        yield return StartCoroutine(DestroyByWave(levels, floatingBubbles));
+
+        // 고립 버블 제거
+        if (floatingBubbles.Count > 0)
+        {
+            yield return StartCoroutine(RemoveFloatingBubblesSpread(floatingBubbles));
+        }
+
+        // 버블 파괴 완료 후 BubbleSpawner에 알림
+        if (bubbleSpawner != null)
+        {
+            bubbleSpawner.OnBubblesDestroyed();
+        }
     }
 
     // ================================================================
@@ -150,7 +179,7 @@ public class HexMapBubbleDestroy : MonoBehaviour
         // HexMapHandler를 사용하여 depth 계산
         Dictionary<(int, int), int> depth = HexMapHandler.CalculateDepthFromStart(
             hexMapController, start.Item1, start.Item2, floatingList);
-
+        
         // depth 순으로 정렬
         List<(int r, int c)> ordered = new List<(int, int)>(floatingList);
         ordered.Sort((a, b) =>
@@ -162,15 +191,29 @@ public class HexMapBubbleDestroy : MonoBehaviour
             if (!hasB) return -1;
             return depth[a].CompareTo(depth[b]);
         });
-
+        
         float delayStep = 0.05f;
         foreach (var (r, c) in ordered)
         {
             Bubble bubble = hexMapController.GetBubble(r, c);
             if (bubble != null)
                 DropFloatingBubble(bubble, r, c);
-
+            
             yield return new WaitForSeconds(delayStep);
+        }
+    }
+
+    /// <summary>
+    /// 고립 버블 제거 후 BubbleSpawner에 알림
+    /// </summary>
+    private IEnumerator RemoveFloatingBubblesAndNotify(List<(int r, int c)> floatingList)
+    {
+        yield return StartCoroutine(RemoveFloatingBubblesSpread(floatingList));
+
+        // 버블 파괴 완료 후 BubbleSpawner에 알림
+        if (bubbleSpawner != null)
+        {
+            bubbleSpawner.OnBubblesDestroyed();
         }
     }
 

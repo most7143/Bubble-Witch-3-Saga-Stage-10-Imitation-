@@ -2686,8 +2686,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 05e62f1b0bd744c49a308857179b8c1d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  spawnInterval: 0.5
+  spawnInterval: 0.1
   maxBubblesPerSpawner: 16
+  moveSpeed: 0.1
+  refillDelay: 2
   spawnerPoints:
   - {fileID: 1573861651}
   - {fileID: 748954956}
