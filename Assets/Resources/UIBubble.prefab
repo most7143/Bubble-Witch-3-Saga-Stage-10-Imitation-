@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 812541205593500786}
   - component: {fileID: 1860617146043293887}
   - component: {fileID: 783096545774437437}
+  - component: {fileID: 4119138430304914233}
   m_Layer: 5
   m_Name: UIBubble
   m_TagString: Untagged
@@ -91,4 +92,29 @@ MonoBehaviour:
   Rect: {fileID: 2169748634232936482}
   Type: 0
   Image: {fileID: 1860617146043293887}
+  Anim: {fileID: 4119138430304914233}
+  SelectedScale: {x: 0.5, y: 0.5, z: 1}
+  DeselectedScale: {x: 0.4, y: 0.4, z: 1}
   currentAngle: -90
+--- !u!95 &4119138430304914233
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5015781045608720664}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: fbe45c21d70042a4490d3a9287ed9d12, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0

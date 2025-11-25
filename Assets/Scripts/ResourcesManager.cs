@@ -48,6 +48,8 @@ public class ResourcesManager : MonoBehaviour
                 return Resources.Load<RuntimeAnimatorController>("Animation/Bubble_Yellow");
             case BubbleTypes.Spell:
                 return Resources.Load<RuntimeAnimatorController>("Animation/Bubble_Spell");
+            case BubbleTypes.Nero:
+                return Resources.Load<RuntimeAnimatorController>("Animation/Bubble_Nero");
         }
 
         return null;

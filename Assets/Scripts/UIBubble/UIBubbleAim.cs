@@ -49,13 +49,17 @@ public class UIBubbleAim : MonoBehaviour
         }
 
 
-        if (IsAiming||Shooter.CurrentBubble.gameObject.activeSelf == false)
+        if (IsAiming)
         {
             UpdateAim();
         }
         else
         {
-            Preview.HidePreviewBubble();
+            if (Preview != null)
+            {
+                Preview.HidePreviewBubble();
+                Preview.SetNeroPreviewCenter(null);
+            }
         }
     }
 
@@ -71,7 +75,11 @@ public class UIBubbleAim : MonoBehaviour
     {
         aimPoints.Clear();
 
-        Preview.SetPreviewPosition(null);
+        if (Preview != null)
+        {
+            Preview.SetPreviewPosition(null);
+            Preview.SetNeroPreviewCenter(null);
+        }
 
         if (Shooter == null || Shooter.CurrentBubble == null)
             return;
@@ -153,6 +161,13 @@ public class UIBubbleAim : MonoBehaviour
         Bubble hitBubble = hit.collider.GetComponent<Bubble>();
         if (hitBubble == null) return;
 
+        // 버블이 hexMap에 등록되어 있는지 확인 (등록되지 않은 버블은 조준선이 무시)
+        // hexRow와 hexCol이 -1이면 등록되지 않은 상태
+        if (!IsBubbleRegisteredInHexMap(hitBubble))
+        {
+            return;
+        }
+
         Vector3 bubbleCenter = hitBubble.transform.position;
         Vector2 bubblePos2D = bubbleCenter;
 
@@ -167,10 +182,20 @@ public class UIBubbleAim : MonoBehaviour
 
         Vector3 surfacePoint = new Vector3(surfacePoint2D.x, surfacePoint2D.y, start.z);
 
+        Vector3? landingPos = null;
         if (Preview != null)
         {
-            Preview.HandleBubbleHit(hit, bubbleCenter, hitBubble, direction, surfacePoint,
+            landingPos = Preview.HandleBubbleHit(hit, bubbleCenter, hitBubble, direction, surfacePoint,
                 (surfacePos) => aimPoints.Add(surfacePos));
+
+            bool isNeroBubble = Shooter != null &&
+                                Shooter.CurrentBubble != null &&
+                                Shooter.CurrentBubble.Type == BubbleTypes.Nero;
+
+            if (isNeroBubble)
+                Preview.SetNeroPreviewCenter(landingPos);
+            else
+                Preview.SetNeroPreviewCenter(null);
         }
         else aimPoints.Add(surfacePoint);
     }
@@ -183,6 +208,18 @@ public class UIBubbleAim : MonoBehaviour
 
     private bool IsBubble(Collider2D c) => (bubbleLayer.value & (1 << c.gameObject.layer)) != 0;
     private bool IsWall(Collider2D c) => (wallLayer.value & (1 << c.gameObject.layer)) != 0;
+
+    /// <summary>
+    /// 버블이 hexMap에 등록되어 있는지 확인
+    /// </summary>
+    private bool IsBubbleRegisteredInHexMap(Bubble bubble)
+    {
+        if (bubble == null)
+            return false;
+
+        // Bubble의 IsRegisteredInHexMap 메서드 사용
+        return bubble.IsRegisteredInHexMap();
+    }
 
     private void DrawLine()
     {
@@ -215,6 +252,7 @@ public class UIBubbleAim : MonoBehaviour
             {
                 Preview.HidePreviewBubble();
                 Preview.ResetHysteresis();
+                Preview.SetNeroPreviewCenter(null);
             }
         }
     }

@@ -16,6 +16,8 @@ public class UIBubblePreview : MonoBehaviour
     [Header("프리뷰 설정")]
     [SerializeField] private GameObject previewBubblePrefab;
     [SerializeField] private float previewAlpha = 0.5f;
+    [SerializeField] private GameObject neroAreaPreviewPrefab;
+    [SerializeField] private int neroPreviewRange = 2;
 
     [Header("참조")]
     public UIBubbleAim Aim;
@@ -26,6 +28,9 @@ public class UIBubblePreview : MonoBehaviour
 
     private GameObject previewBubbleInstance;
     private Vector3? previewPosition = null;
+    private readonly List<GameObject> neroPreviewInstances = new List<GameObject>();
+    private readonly List<Vector3> neroPreviewWorldPositions = new List<Vector3>();
+    private Vector3? neroPreviewCenter = null;
 
     private HysteresisInfo hysteresis;
 
@@ -51,11 +56,13 @@ public class UIBubblePreview : MonoBehaviour
     {
         LoadHexMapInfo();
         SetupPreviewBubble();
+        EnsureNeroPreviewPool(1);
     }
 
     void Update()
     {
         UpdatePreviewBubble();
+        UpdateNeroPreviewBubbles();
     }
 
 
@@ -78,6 +85,26 @@ public class UIBubblePreview : MonoBehaviour
         HidePreviewBubble();
     }
 
+    private GameObject GetNeroPreviewPrefab()
+    {
+        return neroAreaPreviewPrefab != null ? neroAreaPreviewPrefab : previewBubblePrefab;
+    }
+
+    private void EnsureNeroPreviewPool(int requiredCount)
+    {
+        GameObject prefab = GetNeroPreviewPrefab();
+        if (prefab == null)
+            return;
+
+        while (neroPreviewInstances.Count < requiredCount)
+        {
+            GameObject instance = Instantiate(prefab);
+            instance.transform.SetParent(null);
+            instance.SetActive(false);
+            neroPreviewInstances.Add(instance);
+        }
+    }
+
 
     private void UpdatePreviewBubble()
     {
@@ -95,6 +122,56 @@ public class UIBubblePreview : MonoBehaviour
         }
     }
 
+    private void UpdateNeroPreviewBubbles()
+    {
+        if (neroPreviewCenter.HasValue && Aim != null && Aim.IsAiming && HexMapController != null)
+        {
+            var (centerRow, centerCol) = HexMapController.WorldToGrid(neroPreviewCenter.Value);
+            if (!HexMapController.IsValidCell(centerRow, centerCol))
+            {
+                HideNeroPreviewBubbles();
+                neroPreviewWorldPositions.Clear();
+                return;
+            }
+
+            List<(int row, int col)> cells = GetCellsWithinRange(centerRow, centerCol, neroPreviewRange);
+            if (cells.Count == 0)
+            {
+                HideNeroPreviewBubbles();
+                neroPreviewWorldPositions.Clear();
+                return;
+            }
+
+            neroPreviewWorldPositions.Clear();
+            EnsureNeroPreviewPool(cells.Count);
+            for (int i = 0; i < neroPreviewInstances.Count; i++)
+            {
+                if (i >= cells.Count)
+                {
+                    neroPreviewInstances[i].SetActive(false);
+                    continue;
+                }
+
+                var (row, col) = cells[i];
+                if (!HexMapController.IsValidCell(row, col))
+                {
+                    neroPreviewInstances[i].SetActive(false);
+                    continue;
+                }
+
+                Vector3 worldPos = HexMapController.Positions[row, col];
+                neroPreviewInstances[i].transform.position = worldPos;
+                neroPreviewInstances[i].SetActive(true);
+                neroPreviewWorldPositions.Add(worldPos);
+            }
+        }
+        else
+        {
+            HideNeroPreviewBubbles();
+            neroPreviewWorldPositions.Clear();
+        }
+    }
+
 
 
     public void SetPreviewPosition(Vector3? position, Bubble hitBubble = null, bool isLeftSide = false)
@@ -105,6 +182,16 @@ public class UIBubblePreview : MonoBehaviour
             SetHysteresisInfo(hitBubble, position.Value, isLeftSide);
         else
             ResetHysteresis();
+    }
+
+    public void SetNeroPreviewCenter(Vector3? centerPosition)
+    {
+        neroPreviewCenter = centerPosition;
+        if (!centerPosition.HasValue)
+        {
+            HideNeroPreviewBubbles();
+            neroPreviewWorldPositions.Clear();
+        }
     }
 
 
@@ -218,6 +305,59 @@ public class UIBubblePreview : MonoBehaviour
     {
         if (previewBubbleInstance != null)
             previewBubbleInstance.SetActive(false);
+
+        HideNeroPreviewBubbles();
+        neroPreviewWorldPositions.Clear();
+    }
+
+    private void HideNeroPreviewBubbles()
+    {
+        for (int i = 0; i < neroPreviewInstances.Count; i++)
+        {
+            if (neroPreviewInstances[i] != null)
+                neroPreviewInstances[i].SetActive(false);
+        }
+        neroPreviewWorldPositions.Clear();
+    }
+
+    public List<Vector3> GetNeroPreviewWorldPositions()
+    {
+        return new List<Vector3>(neroPreviewWorldPositions);
+    }
+
+    private List<(int row, int col)> GetCellsWithinRange(int row, int col, int range)
+    {
+        List<(int row, int col)> result = new List<(int row, int col)>();
+
+        if (HexMapController == null || range < 0 || !HexMapController.IsValidCell(row, col))
+            return result;
+
+        Queue<(int row, int col, int dist)> queue = new Queue<(int, int, int)>();
+        HashSet<(int row, int col)> visited = new HashSet<(int, int)>();
+
+        queue.Enqueue((row, col, 0));
+        visited.Add((row, col));
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            result.Add((current.row, current.col));
+
+            if (current.dist >= range)
+                continue;
+
+            List<(int row, int col)> adjacent = HexMapController.GetAdjacentCells(current.row, current.col);
+            foreach (var (adjRow, adjCol) in adjacent)
+            {
+                if (!visited.Contains((adjRow, adjCol)))
+                {
+                    visited.Add((adjRow, adjCol));
+                    queue.Enqueue((adjRow, adjCol, current.dist + 1));
+                }
+            }
+        }
+
+        return result;
     }
 
 

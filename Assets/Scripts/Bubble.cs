@@ -24,6 +24,14 @@ public class Bubble : MonoBehaviour
     private int hexCol = -1;
     private HexMap hexMap;
 
+    /// <summary>
+    /// 버블이 hexMap에 등록되어 있는지 확인
+    /// </summary>
+    public bool IsRegisteredInHexMap()
+    {
+        return hexRow >= 0 && hexCol >= 0 && hexMap != null;
+    }
+
     public BubbleTypes GetBubbleType() => Type;
     public void SetBubble(BubbleTypes type, bool isShot = false)
     {
@@ -85,11 +93,15 @@ public class Bubble : MonoBehaviour
     /// <summary>
     /// 헥사맵 좌표 설정
     /// </summary>
-    public void SetHexPosition(int row, int col, Vector3 worldPosition)
+    public void SetHexPosition(int row, int col, Vector3 worldPosition, HexMap map = null)
     {
         hexRow = row;
         hexCol = col;
         hexMapPosition = worldPosition;
+        if (map != null)
+        {
+            hexMap = map;
+        }
     }
 
     /// <summary>

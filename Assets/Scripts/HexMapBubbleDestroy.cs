@@ -1,16 +1,44 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Collections;
+using DG.Tweening;
 
 public class HexMapBubbleDestroy : MonoBehaviour
 {
     private HexMap hexMapController;
     private BubbleSpawner bubbleSpawner;
+    private readonly List<Vector3> pendingNeroTargetsWorld = new List<Vector3>();
+    private const int NeroRange = 2;
 
+    [Header("Drop FX")]
+    public RectTransform DropPoint;
+    [SerializeField] private float dropSuctionDuration = 0.7f;
+    [SerializeField] private float dropSuctionTurns = 2.5f;
+    [SerializeField] private Ease dropSuctionEase = Ease.InCubic;
+    [SerializeField] [Range(0.05f, 1f)] private float dropSuctionVerticalScale = 0.35f;
+    [SerializeField] private float dropSuctionTiltDegrees = 90f;
+    [SerializeField] [Range(0.1f, 2f)] private float dropSuctionRadiusScale = 1f;
     public void Initialize(HexMap hexMap)
     {
         hexMapController = hexMap;
         bubbleSpawner = FindObjectOfType<BubbleSpawner>();
+    }
+
+    public void SetPendingNeroTargets(List<Vector3> targets)
+    {
+        pendingNeroTargetsWorld.Clear();
+        if (targets == null)
+            return;
+
+        foreach (var pos in targets)
+        {
+            pendingNeroTargetsWorld.Add(pos);
+        }
+    }
+
+    public void ClearPendingNeroTargets()
+    {
+        pendingNeroTargetsWorld.Clear();
     }
 
 
@@ -23,6 +51,12 @@ public class HexMapBubbleDestroy : MonoBehaviour
     {
         Bubble center = hexMapController.GetBubble(row, col);
         if (center == null) return;
+
+        if (center.GetBubbleType() == BubbleTypes.Nero)
+        {
+            HandleNeroBubble(row, col);
+            return;
+        }
 
         // Spell 타입인 경우 인접 버블 모두 터트리기
         if (center.GetBubbleType() == BubbleTypes.Spell)
@@ -114,7 +148,7 @@ public class HexMapBubbleDestroy : MonoBehaviour
         if (levels.Count > 1)
         {
             List<List<(int r, int c)>> remainingLevels = levels.GetRange(1, levels.Count - 1);
-            StartCoroutine(DestroyByWave(remainingLevels, floatingBubbles));
+            StartCoroutine(DestroyByWaveAndNotify(remainingLevels, floatingBubbles, hasFairy));
         }
         else
         {
@@ -140,6 +174,144 @@ public class HexMapBubbleDestroy : MonoBehaviour
                 }
             }
         }
+    }
+
+    private void HandleNeroBubble(int row, int col)
+    {
+        HashSet<(int r, int c)> targetCells = BuildNeroTargetCells(row, col);
+        if (targetCells.Count == 0)
+        {
+            ClearPendingNeroTargets();
+            if (IngameManager.Instance.CurrentState == BattleState.Shooting)
+            {
+                IngameManager.Instance.ChangeState(BattleState.Reloading);
+            }
+            return;
+        }
+
+        List<(int r, int c)> existingCells = new List<(int r, int c)>();
+        bool hasFairy = false;
+
+        foreach (var (r, c) in targetCells)
+        {
+            Bubble bubble = hexMapController.GetBubble(r, c);
+            if (bubble == null) continue;
+
+            existingCells.Add((r, c));
+            if (bubble.IsFairy)
+            {
+                hasFairy = true;
+            }
+        }
+
+        if (existingCells.Count == 0)
+        {
+            ClearPendingNeroTargets();
+            if (IngameManager.Instance.CurrentState == BattleState.Shooting)
+            {
+                IngameManager.Instance.ChangeState(BattleState.Reloading);
+            }
+            return;
+        }
+
+        if (hasFairy)
+        {
+            IngameManager.Instance.ChangeState(BattleState.Hitting);
+        }
+        else
+        {
+            IngameManager.Instance.ChangeState(BattleState.Destroying);
+        }
+
+        DestroyLevelImmediate(existingCells);
+
+        HashSet<(int r, int c)> removedSet = new HashSet<(int r, int c)>(existingCells);
+        List<(int r, int c)> floatingBubbles = HexMapHandler.FindFloatingBubblesAfterRemoval(hexMapController, removedSet);
+
+        if (floatingBubbles.Count > 0)
+        {
+            StartCoroutine(RemoveFloatingBubblesAndNotify(floatingBubbles, hasFairy));
+        }
+        else
+        {
+            if (!hasFairy)
+            {
+                if (bubbleSpawner != null)
+                {
+                    bubbleSpawner.OnBubblesDestroyed();
+                }
+                else if (IngameManager.Instance.CurrentState == BattleState.Destroying)
+                {
+                    IngameManager.Instance.ChangeState(BattleState.Reloading);
+                }
+            }
+        }
+
+        ClearPendingNeroTargets();
+    }
+
+    private HashSet<(int r, int c)> BuildNeroTargetCells(int row, int col)
+    {
+        HashSet<(int r, int c)> targets = ConvertWorldTargetsToCells(pendingNeroTargetsWorld);
+        if (targets.Count == 0)
+        {
+            targets = CollectCellsWithinRange(row, col, NeroRange);
+        }
+
+        if (hexMapController.IsValidCell(row, col))
+        {
+            targets.Add((row, col));
+        }
+
+        return targets;
+    }
+
+    private HashSet<(int r, int c)> ConvertWorldTargetsToCells(List<Vector3> worldPositions)
+    {
+        HashSet<(int r, int c)> result = new HashSet<(int r, int c)>();
+        if (hexMapController == null || worldPositions == null)
+            return result;
+
+        foreach (var pos in worldPositions)
+        {
+            var (r, c) = hexMapController.WorldToGrid(pos);
+            if (hexMapController.IsValidCell(r, c))
+            {
+                result.Add((r, c));
+            }
+        }
+
+        return result;
+    }
+
+    private HashSet<(int r, int c)> CollectCellsWithinRange(int startRow, int startCol, int range)
+    {
+        HashSet<(int r, int c)> result = new HashSet<(int r, int c)>();
+        if (hexMapController == null || !hexMapController.IsValidCell(startRow, startCol) || range < 0)
+            return result;
+
+        Queue<(int row, int col, int dist)> queue = new Queue<(int, int, int)>();
+        queue.Enqueue((startRow, startCol, 0));
+        result.Add((startRow, startCol));
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            if (current.dist >= range)
+                continue;
+
+            List<(int row, int col)> adjacentCells = hexMapController.GetAdjacentCells(current.row, current.col);
+            foreach (var (adjRow, adjCol) in adjacentCells)
+            {
+                if (!result.Contains((adjRow, adjCol)))
+                {
+                    result.Add((adjRow, adjCol));
+                    queue.Enqueue((adjRow, adjCol, current.dist + 1));
+                }
+            }
+        }
+
+        return result;
     }
 
     // 클래스 멤버 변수 추가 (파일 상단)
@@ -370,7 +542,7 @@ private void CheckAdjacentSpellBubbles(int row, int col, HashSet<(int r, int c)>
 // ================================================================
 // 단계별 파동 처리
 // ================================================================
-private IEnumerator DestroyByWave(List<List<(int r, int c)>> levels, List<(int r, int c)> floatingBubbles)
+private IEnumerator DestroyByWaveAndNotify(List<List<(int r, int c)>> levels, List<(int r, int c)> preCalculatedFloatingBubbles, bool hasFairy)
 {
     float delayPerLevel = 0.08f;
     
@@ -427,6 +599,25 @@ private IEnumerator DestroyByWave(List<List<(int r, int c)>> levels, List<(int r
         }
 
         yield return new WaitForSeconds(delayPerLevel);
+    }
+    
+    // 모든 파괴가 끝난 후 고립 버블을 다시 체크 (가장 마지막에 확인)
+    List<(int r, int c)> floatingBubbles = FindFloatingBubbles();
+    
+    // 고립 버블이 있으면 떨어뜨리기
+    if (floatingBubbles.Count > 0)
+    {
+        yield return StartCoroutine(RemoveFloatingBubblesSpread(floatingBubbles));
+        
+        // 떨어진 버블들이 완전히 삭제될 때까지 대기
+        yield return new WaitForSeconds(3f);
+    }
+    
+    // 페어리가 있으면 Hitting 상태는 유지 (체력 연출 후 Reloading으로 전환됨)
+    // 페어리가 없으면 재배치를 위해 OnBubblesDestroyed 호출
+    if (!hasFairy && bubbleSpawner != null)
+    {
+        bubbleSpawner.OnBubblesDestroyed();
     }
 }
 
@@ -486,9 +677,13 @@ private IEnumerator DestroyByWave(List<List<(int r, int c)>> levels, List<(int r
         float delayStep = 0.05f;
         foreach (var (r, c) in ordered)
         {
+            // GetBubble으로 가져오기 전에 이미 해제되었을 수 있으므로
+            // 직접 grid에서 확인하거나, UnregisterBubble 전에 가져오기
             Bubble bubble = hexMapController.GetBubble(r, c);
             if (bubble != null)
+            {
                 DropFloatingBubble(bubble, r, c);
+            }
             
             yield return new WaitForSeconds(delayStep);
         }
@@ -501,8 +696,9 @@ private IEnumerator DestroyByWave(List<List<(int r, int c)>> levels, List<(int r
     {
         yield return StartCoroutine(RemoveFloatingBubblesSpread(floatingList));
         
-        // 떨어진 버블들이 완전히 삭제될 때까지 대기 (DestroyBubbleAfterDelay가 3초 후 삭제)
-        yield return new WaitForSeconds(3f);
+        // 떨어진 버블들이 완전히 삭제될 때까지 대기
+        float cleanupDelay = DropPoint != null ? Mathf.Max(0.1f, dropSuctionDuration) : 3f;
+        yield return new WaitForSeconds(cleanupDelay);
         
         // 페어리가 있으면 Hitting 상태는 유지 (체력 연출 후 Reloading으로 전환됨)
         // 페어리가 없으면 재배치를 위해 OnBubblesDestroyed 호출
@@ -514,17 +710,94 @@ private IEnumerator DestroyByWave(List<List<(int r, int c)>> levels, List<(int r
 
     private void DropFloatingBubble(Bubble bubble, int r, int c)
     {
+        if (bubble == null) return;
+
+        // hexMap에서 해제만 수행 (Collider는 그대로 유지)
         hexMapController.UnregisterBubble(r, c);
+
+        if (DropPoint == null)
+        {
+            bubble.transform.SetParent(null);
+            bubble.Rigid.bodyType = RigidbodyType2D.Dynamic;
+            bubble.Rigid.gravityScale = 1f;
+
+            Vector3 center = hexMapController.transform.position;
+            Vector2 dir = ((Vector2)bubble.transform.position - (Vector2)center).normalized;
+            bubble.Rigid.AddForce(dir * Random.Range(15f, 25f));
+            bubble.Rigid.AddTorque(Random.Range(-2f, 2f));
+
+            StartCoroutine(DestroyBubbleAfterDelay(bubble, 3f));
+            return;
+        }
+
         bubble.transform.SetParent(null);
-        bubble.Rigid.bodyType = RigidbodyType2D.Dynamic;
-        bubble.Rigid.gravityScale = 1f;
+        bubble.Rigid.linearVelocity = Vector2.zero;
+        bubble.Rigid.angularVelocity = 0f;
+        bubble.Rigid.bodyType = RigidbodyType2D.Kinematic;
+        bubble.Rigid.simulated = false;
 
-        Vector3 center = hexMapController.transform.position;
-        Vector2 dir = ((Vector2)bubble.transform.position - (Vector2)center).normalized;
-        bubble.Rigid.AddForce(dir * Random.Range(15f, 25f));
-        bubble.Rigid.AddTorque(Random.Range(-2f, 2f));
+        bubble.transform.DOKill();
 
-        StartCoroutine(DestroyBubbleAfterDelay(bubble, 3f));
+        Vector3 targetPos = GetWorldPositionFromDropPoint(DropPoint);
+        Vector3[] spiralPath = BuildSpiralPath(bubble.transform.position, targetPos, dropSuctionTurns, 28);
+
+        Sequence suctionSeq = DOTween.Sequence();
+        suctionSeq.Append(bubble.transform.DOPath(
+            spiralPath,
+            dropSuctionDuration,
+            PathType.CatmullRom,
+            PathMode.TopDown2D
+        ).SetEase(dropSuctionEase));
+
+        suctionSeq.OnComplete(() =>
+        {
+            hexMapController.ObjectPool?.DespawnBubble(bubble);
+        });
+    }
+
+    private Vector3[] BuildSpiralPath(Vector3 start, Vector3 target, float turns, int segments)
+    {
+        List<Vector3> points = new List<Vector3>(Mathf.Max(segments, 2));
+        Vector3 offset = start - target;
+        if (offset == Vector3.zero)
+        {
+            offset = Vector3.right * 0.1f;
+        }
+
+        float baseRadius = offset.magnitude * Mathf.Clamp(dropSuctionRadiusScale, 0.1f, 2f);
+        Vector3 baseDir = offset.normalized;
+        Quaternion alignRotation = Quaternion.FromToRotation(Vector3.right, baseDir);
+        Quaternion tiltRotation = Quaternion.AngleAxis(dropSuctionTiltDegrees, baseDir);
+        Quaternion finalRotation = tiltRotation * alignRotation;
+        float totalTurns = Mathf.Max(turns, 0.25f);
+        float verticalScale = Mathf.Clamp(dropSuctionVerticalScale, 0.05f, 1f);
+
+        for (int i = 0; i <= segments; i++)
+        {
+            float t = i / (float)segments;
+            float radius = Mathf.Lerp(baseRadius, 0f, t);
+            float angleDeg = Mathf.Lerp(0f, 360f * totalTurns, t);
+            float angleRad = angleDeg * Mathf.Deg2Rad;
+            Vector3 localPoint = new Vector3(Mathf.Cos(angleRad) * radius,
+                                             Mathf.Sin(angleRad) * radius * verticalScale,
+                                             0f);
+            Vector3 rotatedPoint = finalRotation * localPoint;
+            Vector3 point = target + rotatedPoint;
+            point.z = Mathf.Lerp(start.z, target.z, t);
+            points.Add(point);
+        }
+
+        return points.ToArray();
+    }
+
+    private Vector3 GetWorldPositionFromDropPoint(RectTransform dropPoint)
+    {
+        if (dropPoint == null)
+            return Vector3.zero;
+
+        Vector3[] corners = new Vector3[4];
+        dropPoint.GetWorldCorners(corners);
+        return (corners[0] + corners[2]) * 0.5f;
     }
 
     private IEnumerator DestroyBubbleAfterDelay(Bubble bubble, float delay)

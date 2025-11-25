@@ -17,6 +17,11 @@ public class HexMap : MonoBehaviour
     public ObjectPool ObjectPool;
     public HexMapBubbleDestroy HexMapBubbleDestroy;
 
+    [Header("Debug")]
+    [SerializeField] private bool showDebugGizmos = true;
+    [SerializeField] private bool showRegisteredBubbles = true;
+    [SerializeField] private bool showEmptyCells = false;
+
     private Bubble[,] grid;
     private Vector3[,] worldPositions;
 
@@ -97,7 +102,7 @@ public class HexMap : MonoBehaviour
             UnregisterBubble(row, col);
 
         grid[row, col] = bubble;
-        bubble.SetHexPosition(row, col, worldPositions[row, col]);
+        bubble.SetHexPosition(row, col, worldPositions[row, col], this);
         
         // 매치 체크는 발사된 버블이 착지했을 때만 실행
         // 초기 생성 시에는 checkMatches=false로 호출되므로 파괴 로직이 실행되지 않음
@@ -367,5 +372,148 @@ public class HexMap : MonoBehaviour
         return worldPositions[emptyRow, emptyCol];
     }
 
+#if UNITY_EDITOR
+    void OnDrawGizmos()
+    {
+        if (!showDebugGizmos || grid == null || worldPositions == null)
+            return;
+
+        for (int row = 0; row < rows; row++)
+        {
+            for (int col = 0; col < cols; col++)
+            {
+                if (!IsValidCell(row, col))
+                    continue;
+
+                Vector3 pos = worldPositions[row, col];
+                Bubble bubble = grid[row, col];
+
+                if (bubble != null)
+                {
+                    // 등록된 버블: 초록색
+                    if (showRegisteredBubbles)
+                    {
+                        Gizmos.color = Color.green;
+                        Gizmos.DrawWireSphere(pos, bubbleRadius * 0.8f);
+
+                        // 버블의 실제 위치와 등록 위치가 다른 경우 빨간색으로 표시
+                        if (bubble.transform != null)
+                        {
+                            float dist = Vector3.Distance(bubble.transform.position, pos);
+                            if (dist > 0.1f)
+                            {
+                                Gizmos.color = Color.red;
+                                Gizmos.DrawLine(pos, bubble.transform.position);
+                                Gizmos.DrawWireSphere(bubble.transform.position, bubbleRadius * 0.5f);
+                            }
+                        }
+                    }
+                }
+                else if (showEmptyCells)
+                {
+                    // 빈 셀: 회색
+                    Gizmos.color = Color.gray;
+                    Gizmos.DrawWireSphere(pos, bubbleRadius * 0.3f);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 디버그: 헥사맵 상태를 콘솔에 출력
+    /// </summary>
+    [ContextMenu("Debug: Print HexMap Status")]
+    public void DebugPrintHexMapStatus()
+    {
+        if (grid == null)
+        {
+            Debug.LogWarning("HexMap grid is not initialized!");
+            return;
+        }
+
+        int registeredCount = 0;
+        int mismatchCount = 0;
+        List<string> mismatches = new List<string>();
+
+        for (int row = 0; row < rows; row++)
+        {
+            for (int col = 0; col < cols; col++)
+            {
+                Bubble bubble = grid[row, col];
+                if (bubble != null)
+                {
+                    registeredCount++;
+                    Vector3 expectedPos = worldPositions[row, col];
+                    
+                    if (bubble.transform != null)
+                    {
+                        float dist = Vector3.Distance(bubble.transform.position, expectedPos);
+                        if (dist > 0.1f)
+                        {
+                            mismatchCount++;
+                            mismatches.Add($"Row:{row}, Col:{col} - Expected:{expectedPos}, Actual:{bubble.transform.position}, Distance:{dist:F2}");
+                        }
+
+                        // Collider 상태 확인
+                        Collider2D col2d = bubble.GetComponent<Collider2D>();
+                        if (col2d != null && !col2d.enabled)
+                        {
+                            mismatches.Add($"Row:{row}, Col:{col} - Collider is DISABLED!");
+                        }
+                    }
+                }
+            }
+        }
+
+        Debug.Log($"=== HexMap Status ===\n" +
+                  $"Total Cells: {rows * cols}\n" +
+                  $"Registered Bubbles: {registeredCount}\n" +
+                  $"Position Mismatches: {mismatchCount}\n" +
+                  (mismatches.Count > 0 ? $"Issues:\n{string.Join("\n", mismatches)}" : "No issues found!"));
+    }
+
+    /// <summary>
+    /// 디버그: 특정 버블의 등록 상태 확인
+    /// </summary>
+    public void DebugCheckBubbleRegistration(Bubble bubble)
+    {
+        if (bubble == null)
+        {
+            Debug.LogWarning("Bubble is null!");
+            return;
+        }
+
+        bool found = false;
+        for (int row = 0; row < rows; row++)
+        {
+            for (int col = 0; col < cols; col++)
+            {
+                if (grid[row, col] == bubble)
+                {
+                    found = true;
+                    Vector3 expectedPos = worldPositions[row, col];
+                    Vector3 actualPos = bubble.transform.position;
+                    float dist = Vector3.Distance(actualPos, expectedPos);
+
+                    Collider2D col2d = bubble.GetComponent<Collider2D>();
+                    bool colliderEnabled = col2d != null && col2d.enabled;
+
+                    Debug.Log($"Bubble found at Row:{row}, Col:{col}\n" +
+                              $"Expected Position: {expectedPos}\n" +
+                              $"Actual Position: {actualPos}\n" +
+                              $"Distance: {dist:F2}\n" +
+                              $"Collider Enabled: {colliderEnabled}\n" +
+                              $"Active: {bubble.gameObject.activeSelf}");
+                    return;
+                }
+            }
+        }
+
+        if (!found)
+        {
+            Debug.LogWarning($"Bubble {bubble.name} is NOT registered in HexMap!");
+        }
+    }
+#endif
 
 }

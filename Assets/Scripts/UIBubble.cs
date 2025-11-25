@@ -9,6 +9,9 @@ public class UIBubble : MonoBehaviour
 
     public Image Image;
 
+
+    public Animator Anim;
+
     private UIBubbleShooter shooter;
 
 
@@ -26,6 +29,15 @@ public class UIBubble : MonoBehaviour
     {
         Type = type;
         Image.sprite = ResourcesManager.Instance.GetBubbleSprite(Type);
+
+        if(type== BubbleTypes.Nero)
+        {
+            Anim.enabled = true;
+        }
+        else
+        {
+            Anim.enabled = false;
+        }
     }
     /// <summary>
     /// 원의 궤적을 따라 목표 각도로 애니메이션
