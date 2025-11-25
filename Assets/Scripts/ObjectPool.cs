@@ -33,7 +33,7 @@ public class ObjectPool : MonoBehaviour
         {
             if (!bubble.gameObject.activeSelf)
             {
-                bubble.SetBubble(type);
+                bubble.SetBubble(type, false); // 스포너에서 생성된 버블은 isShot=false
                 bubble.gameObject.SetActive(true);
                 return bubble;
             }
@@ -49,7 +49,7 @@ public class ObjectPool : MonoBehaviour
     public Bubble AddedBubble(BubbleTypes type)
     {
         GameObject bubbleObj = Instantiate(Bubble, transform);
-        bubbleObj.GetComponent<Bubble>().SetBubble(type);
+        bubbleObj.GetComponent<Bubble>().SetBubble(type, false); // 스포너에서 생성된 버블은 isShot=false
         BubbleList.Add(bubbleObj.GetComponent<Bubble>());
 
         return bubbleObj.GetComponent<Bubble>();

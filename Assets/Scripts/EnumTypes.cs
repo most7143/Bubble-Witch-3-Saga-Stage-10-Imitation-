@@ -39,11 +39,15 @@ public enum BattleState
 {
     None,
 
+    Starting,
+
     Normal,
 
     Shooting,
 
     Destroying,
+
+    Hitting,
 
 
     RespawnBubbles,

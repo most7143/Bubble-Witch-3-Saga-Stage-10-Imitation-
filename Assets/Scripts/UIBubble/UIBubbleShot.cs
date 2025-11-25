@@ -83,6 +83,9 @@ public class UIBubbleShot : MonoBehaviour
         Bubble bubble = BubblePool.SpawnBubble(uiBubble.Type);
         if (bubble == null) return null;
 
+        // 발사된 버블이므로 페어리가 붙지 않도록 설정
+        bubble.SetBubble(uiBubble.Type, true);
+        
         bubble.transform.position = uiBubble.Rect.position; // 월드 위치 기준
         return bubble;
     }

@@ -17,7 +17,7 @@ public class Fairy : MonoBehaviour
         if(other.gameObject.tag == "Boss")
         {
             other.gameObject.GetComponent<Boss>().TakeDamage(10);
-            Destroy(gameObject);
+            DespawnFairy();
         }
     }
 

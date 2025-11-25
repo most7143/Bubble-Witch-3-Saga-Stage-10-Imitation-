@@ -42,7 +42,6 @@ public class BubbleSpawner : MonoBehaviour
     void Start()
     {
         InitializeSpawners();
-        StartSpawning();
     }
 
     private void InitializeSpawners()
@@ -125,7 +124,11 @@ public class BubbleSpawner : MonoBehaviour
     {
         IngameManager.Instance.ChangeState(BattleState.RespawnBubbles);
 
-        StartCoroutine(RefillBubbles());
+        // Boss 애니메이션이 있으면 먼저 재생
+        if (IngameManager.Instance.BossObj != null)
+        {
+            IngameManager.Instance.BossObj.SpawnBubbleForRefill();
+        }
     }
 
 
@@ -657,5 +660,10 @@ public class BubbleSpawner : MonoBehaviour
 
         // 헥스맵에 등록 (checkMatches = true로 설정하여 매치 체크 실행)
         hexMap.RegisterBubble(row, col, bubble, true);
+    }
+
+    public void StartRefillBubbles()
+    {
+        StartCoroutine(RefillBubbles());
     }
 }

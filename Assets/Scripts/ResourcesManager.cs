@@ -29,6 +29,8 @@ public class ResourcesManager : MonoBehaviour
                 return Resources.Load<Sprite>("Sprites/Bubble_Blue");
             case BubbleTypes.Yellow:
                 return Resources.Load<Sprite>("Sprites/Bubble_Yellow");
+            case BubbleTypes.Spell:
+                return Resources.Load<Sprite>("Sprites/Bubble_Spell");
         }
 
         return null;
@@ -44,6 +46,8 @@ public class ResourcesManager : MonoBehaviour
                 return Resources.Load<RuntimeAnimatorController>("Animation/Bubble_Blue");
             case BubbleTypes.Yellow:
                 return Resources.Load<RuntimeAnimatorController>("Animation/Bubble_Yellow");
+            case BubbleTypes.Spell:
+                return Resources.Load<RuntimeAnimatorController>("Animation/Bubble_Spell");
         }
 
         return null;

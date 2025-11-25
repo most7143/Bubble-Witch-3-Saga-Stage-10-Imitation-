@@ -22,11 +22,16 @@ public class IngameManager : MonoBehaviour
     public Boss BossObj;
     public BattleState CurrentState = BattleState.None;
 
+    private void Start()
+    {
+        GameStart();
+    }
 
 
     public void GameStart()
     {
-        CurrentState = BattleState.Normal;
+        CurrentState = BattleState.Starting;
+        BossObj.SpawnBubble();
     }
 
     public void ChangeState(BattleState state)

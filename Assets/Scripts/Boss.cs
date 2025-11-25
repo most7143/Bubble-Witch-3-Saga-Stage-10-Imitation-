@@ -29,11 +29,11 @@ public class Boss : MonoBehaviour
         CurrentHealth -= damage;
         if(CurrentHealth <= 0)
         {
-            Anim.SetTrigger("Die");
+            Anim.SetTrigger("Death");
         }
         else
         {
-            Anim.SetTrigger("Hit");
+            Anim.SetTrigger("Hurt");
         }
 
         UpdateHealthBar();
@@ -41,7 +41,45 @@ public class Boss : MonoBehaviour
 
     public void SpawnBubble()
     {
-        Anim.SetTrigger("Attack");
+        StartCoroutine(SpawnBubbleCoroutine());
+    }
+
+    /// <summary>
+    /// 버블 재생성을 위한 애니메이션 재생
+    /// </summary>
+    public void SpawnBubbleForRefill()
+    {
+        StartCoroutine(SpawnBubbleForRefillCoroutine());
+    }
+
+    private IEnumerator SpawnBubbleCoroutine()
+    {
+        yield return new WaitForSeconds(1f);
+        // Attack1 애니메이션 트리거
+        Anim.SetTrigger("Attack1");
+
+        yield return new WaitForSeconds(1f);
+        
+        // 애니메이션이 끝난 후 버블 생성 시작
+        if (BubbleSpawner != null)
+        {
+            BubbleSpawner.StartSpawning();
+        }
+    }
+
+    private IEnumerator SpawnBubbleForRefillCoroutine()
+    {
+        yield return new WaitForSeconds(1f);
+        // Attack1 애니메이션 트리거
+        Anim.SetTrigger("Attack1");
+
+        yield return new WaitForSeconds(1f);
+        
+        // 애니메이션이 끝난 후 버블 재생성 시작
+        if (BubbleSpawner != null)
+        {
+            BubbleSpawner.StartRefillBubbles();
+        }
     }
 
     private void UpdateHealthBar()
@@ -69,5 +107,20 @@ public class Boss : MonoBehaviour
         // 현재 BarFill 위치에서 HealthBar 위치까지 애니메이션
         barFillTween = BarFill.DOFillAmount(targetHealth, 0.5f)
             .SetEase(Ease.OutQuad);
+        
+        // 체력 연출이 끝날 때까지 대기 (0.5초 애니메이션)
+        yield return new WaitForSeconds(0.5f);
+        
+        // Hitting 상태였다면 RespawnBubbles 상태로 전환하고 버블 재생성 시작
+        if (IngameManager.Instance != null && IngameManager.Instance.CurrentState == BattleState.Hitting)
+        {
+            IngameManager.Instance.ChangeState(BattleState.RespawnBubbles);
+            
+            // 체력 연출이 끝난 후 버블 재생성 시작
+            if (BubbleSpawner != null)
+            {
+                BubbleSpawner.OnBubblesDestroyed();
+            }
+        }
     }
 }

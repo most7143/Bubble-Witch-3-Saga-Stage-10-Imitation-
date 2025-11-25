@@ -25,14 +25,14 @@ public class Bubble : MonoBehaviour
     private HexMap hexMap;
 
     public BubbleTypes GetBubbleType() => Type;
-    public void SetBubble(BubbleTypes type)
+    public void SetBubble(BubbleTypes type, bool isShot = false)
     {
         Type = type;
-        SetFairy();
+        SetFairy(isShot);
         UpdateVisual();
     }
 
-    private Sequence fairyAnimationSequence; 
+    private Sequence fairyAnimationSequence;
 
     void OnDestroy()
     {
@@ -41,29 +41,33 @@ public class Bubble : MonoBehaviour
         {
             fairyAnimationSequence.Kill();
         }
-        
+
         UnregisterFromHexMap();
     }
 
     /// <summary>
     /// 헥사맵에 버블 등록
     /// </summary>
-  
 
-    public void SetFairy()
+
+    public void SetFairy(bool isShot = false)
     {
+        IsFairy = false;
+        FairySpriteRenderer.gameObject.SetActive(false);
+
+        // 발사된 버블이거나 Spell 타입이면 페어리 없음
+        if (isShot || Type == BubbleTypes.Spell)
+            return;
+
         float chance = Random.Range(0f, 1f);
-        if(chance < 0.3f)
+        
+        if (chance < 0.3f)
         {
             IsFairy = true;
             FairySpriteRenderer.gameObject.SetActive(true);
             FairyAnimation();
         }
-        else
-        {
-            IsFairy = false;
-            FairySpriteRenderer.gameObject.SetActive(false);
-        }
+      
 
     }
 
@@ -93,7 +97,7 @@ public class Bubble : MonoBehaviour
     /// </summary>
     public Vector3 GetHexMapPosition() => hexMapPosition;
 
-  
+
 
     void UpdateVisual()
     {
@@ -104,7 +108,7 @@ public class Bubble : MonoBehaviour
 
         if (Anim != null)
         {
-           Anim.runtimeAnimatorController = ResourcesManager.Instance.GetBubbleAnimatorController(Type);
+            Anim.runtimeAnimatorController = ResourcesManager.Instance.GetBubbleAnimatorController(Type);
         }
     }
 
@@ -135,7 +139,7 @@ public class Bubble : MonoBehaviour
 
     public void FairyAnimation()
     {
-        if(IsFairy && FairySpriteRenderer != null)
+        if (IsFairy && FairySpriteRenderer != null)
         {
             // 기존 애니메이션이 있으면 정리
             if (fairyAnimationSequence != null && fairyAnimationSequence.IsActive())
@@ -145,13 +149,13 @@ public class Bubble : MonoBehaviour
 
             // 요정 스프라이트의 초기 위치 저장 (버블 중심 기준)
             Vector3 startPosition = FairySpriteRenderer.transform.localPosition;
-            
+
             // 애니메이션 시퀀스 생성
             fairyAnimationSequence = DOTween.Sequence();
-            
+
             // 랜덤하게 이동하는 애니메이션 반복
             CreateFairyMovement(fairyAnimationSequence, startPosition);
-            
+
             // 무한 반복
             fairyAnimationSequence.SetLoops(-1);
         }
@@ -170,7 +174,7 @@ public class Bubble : MonoBehaviour
         float baseDuration = 4f; // 반경 minRadius일 때 기준
         float revolutionDuration = baseDuration * (radius / minRadius);
 
-        int waypointCount = 16;          
+        int waypointCount = 16;
         bool clockwise = Random.value < 0.5f;
 
         float angleStep = (360f / waypointCount) * (clockwise ? -1f : 1f);
@@ -201,5 +205,5 @@ public class Bubble : MonoBehaviour
         sequence.AppendCallback(() => FairySpriteRenderer.transform.localPosition = firstPoint);
     }
 
-   
+
 }
