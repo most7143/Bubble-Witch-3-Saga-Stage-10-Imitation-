@@ -9,6 +9,7 @@ public class UIBubbleRotation : MonoBehaviour
     [Header("원형 배치 설정")]
     [SerializeField] private float radius = 100f; // 원의 반지름
     [SerializeField] private float rotationDuration = 0.5f; // 회전 애니메이션 시간
+    [SerializeField, Range(0.5f, 1f)] private float scaleDecreaseFactor = 0.9f; // 인덱스마다 스케일 감소 비율
     private Vector2 circleCenter;
 
 
@@ -39,6 +40,7 @@ public class UIBubbleRotation : MonoBehaviour
         if (bubbles == null || bubbles.Count == 0)
             return;
 
+        this.circleCenter = circleCenter;
 
         float[] angles = GetBubbleAngles(bubbles.Count);
 
@@ -57,6 +59,7 @@ public class UIBubbleRotation : MonoBehaviour
             );
 
             bubbles[i].Rect.anchoredPosition = position;
+            bubbles[i].Rect.localScale = GetScaleForIndex(bubbles[i], i);
         }
     }
 
@@ -118,7 +121,7 @@ public class UIBubbleRotation : MonoBehaviour
                     UIBubble bubble = bubbles[i];
                     if (bubble == null) continue;
 
-                    Vector3 targetScale = (i == 0) ? bubble.SelectedScale : bubble.DeselectedScale;
+                    Vector3 targetScale = GetScaleForIndex(bubble, i);
                     
                     if (!bubble.gameObject.activeSelf)
                     {
@@ -137,27 +140,7 @@ public class UIBubbleRotation : MonoBehaviour
         }
         else
         {
-            // Rotate 타입일 때: 회전이 끝난 후 스케일 애니메이션 추가
-            seq.OnComplete(() =>
-            {
-                Sequence scaleSeq = DOTween.Sequence();
-
-                // 모든 버블에 대해 스케일 애니메이션 적용
-                for (int i = 0; i < bubbles.Count; i++)
-                {
-                    UIBubble bubble = bubbles[i];
-                    if (bubble == null) continue;
-
-                    Vector3 currentScale = bubble.Rect.localScale;
-                    Vector3 targetScale = (i == 0) ? bubble.SelectedScale : bubble.DeselectedScale;
-                    
-                    // 스케일 애니메이션: 현재 스케일에서 목표 스케일로
-                    scaleSeq.Join(bubble.Rect.DOScale(targetScale, rotationDuration)
-                        .SetEase(Ease.OutBack));
-                }
-
-                scaleSeq.OnComplete(() => IsRotating = false);
-            });
+            seq.OnComplete(() => IsRotating = false);
         }
     }
 
@@ -178,6 +161,10 @@ public class UIBubbleRotation : MonoBehaviour
         if (bubbles[0] != null)
         {
             UIBubble reloadBubble = bubbles[0];
+            reloadBubble.Rect.localScale = Vector3.zero;
+            reloadBubble.gameObject.SetActive(true);
+            Vector3 leadingScale = GetScaleForIndex(reloadBubble, 0);
+
             float startAngle = reloadBubble.currentAngle;
             float targetAngle = targetAngles[0]; // 0번째 위치의 각도
 
@@ -208,25 +195,11 @@ public class UIBubbleRotation : MonoBehaviour
                 rotationDuration
             ).SetEase(Ease.OutCubic));
 
-            // 이동 완료 후 스케일이 커지면서 나타남
-            reloadSeq.OnComplete(() =>
-            {
-                if (reloadBubble != null)
-                {
-                    // 스케일을 0에서 시작해서 커지게
-                    reloadBubble.Rect.localScale = Vector3.zero;
-                    reloadBubble.gameObject.SetActive(true);
-                    
-                    // 스케일 애니메이션
-                    reloadBubble.Rect.DOScale(reloadBubble.SelectedScale, rotationDuration)
-                        .SetEase(Ease.OutBack)
-                        .OnComplete(() => IsRotating = false);
-                }
-                else
-                {
-                    IsRotating = false;
-                }
-            });
+            // 이동과 동시에 스케일 애니메이션
+            reloadSeq.Join(reloadBubble.Rect.DOScale(leadingScale, rotationDuration)
+                .SetEase(Ease.OutBack));
+
+            reloadSeq.OnComplete(() => IsRotating = false);
         }
         else
         {
@@ -292,7 +265,11 @@ public class UIBubbleRotation : MonoBehaviour
                 angleDiff += 360f;
             }
 
-            // 0번째 버블 이동
+            // 0번 위치에 맞는 목표 스케일로 전환
+            Vector3 leadingScale = GetScaleForIndex(firstBubble, 0);
+            firstBubble.Rect.localScale = Vector3.zero;
+
+            // 0번째 버블 이동 (먼저 Append로 추가)
             reloadSeq.Append(DOTween.To(() => firstBubble.currentAngle,
                 currentMoveAngle =>
                 {
@@ -304,6 +281,10 @@ public class UIBubbleRotation : MonoBehaviour
                 startAngle + angleDiff,
                 rotationDuration
             ).SetEase(Ease.OutCubic));
+
+            // 이동과 동시에 스케일 애니메이션
+            reloadSeq.Join(firstBubble.Rect.DOScale(leadingScale, rotationDuration)
+                .SetEase(Ease.OutBack));
         }
         else
         {
@@ -335,7 +316,8 @@ public class UIBubbleRotation : MonoBehaviour
                 newBubble.gameObject.SetActive(true);
                 
                 // 스케일 애니메이션
-                newBubble.Rect.DOScale(newBubble.DeselectedScale, rotationDuration)
+                Vector3 targetScale = GetScaleForIndex(newBubble, 1);
+                newBubble.Rect.DOScale(targetScale, rotationDuration)
                     .SetEase(Ease.OutBack)
                     .OnComplete(() => IsRotating = false);
             }
@@ -390,6 +372,7 @@ public class UIBubbleRotation : MonoBehaviour
                 float rad = angle * Mathf.Deg2Rad;
                 Vector2 pos = circleCenter + new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * radius;
                 bubbles[i].Rect.anchoredPosition = pos;
+                bubbles[i].Rect.localScale = GetScaleForIndex(bubbles[i], i);
             }
         }
 
@@ -404,7 +387,8 @@ public class UIBubbleRotation : MonoBehaviour
             neroBubble.Rect.localScale = Vector3.zero;
             neroBubble.gameObject.SetActive(true);
             
-            spawnSeq.Join(neroBubble.Rect.DOScale(neroBubble.SelectedScale, rotationDuration)
+            Vector3 targetScale = GetScaleForIndex(neroBubble, 0);
+            spawnSeq.Join(neroBubble.Rect.DOScale(targetScale, rotationDuration)
                 .SetEase(Ease.OutBack));
         }
 
@@ -424,7 +408,8 @@ public class UIBubbleRotation : MonoBehaviour
             newBubble.Rect.localScale = Vector3.zero;
             newBubble.gameObject.SetActive(true);
             
-            spawnSeq.Join(newBubble.Rect.DOScale(newBubble.DeselectedScale, rotationDuration)
+            Vector3 targetScale = GetScaleForIndex(newBubble, 2);
+            spawnSeq.Join(newBubble.Rect.DOScale(targetScale, rotationDuration)
                 .SetEase(Ease.OutBack));
         }
 
@@ -465,6 +450,16 @@ public class UIBubbleRotation : MonoBehaviour
         }
         
         return angles;
+    }
+
+    private Vector3 GetScaleForIndex(UIBubble bubble, int index)
+    {
+        if (bubble == null)
+            return Vector3.one;
+
+        float factor = Mathf.Pow(scaleDecreaseFactor, Mathf.Max(0, index));
+        Vector3 baseScale = bubble.SelectedScale;
+        return new Vector3(baseScale.x * factor, baseScale.y * factor, baseScale.z);
     }
 
     public float[] GetBubbleAngles(int count)

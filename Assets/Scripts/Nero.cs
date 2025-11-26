@@ -65,6 +65,10 @@ public class Nero : MonoBehaviour
         // 0번째 버블 사라지게
         if (UIBubbleShooter.CurrentBubble != null)
         {
+
+            UIBubbleShooter.ShottingCountValue--;
+            UIBubbleShooter.UpdateShottingCountUI();
+            
             // 버블의 위치와 이미지 가져오기
             UIBubble currentBubble = UIBubbleShooter.CurrentBubble;
             Vector3 bubbleStartPos = currentBubble.Rect.position;

@@ -35,10 +35,6 @@ public class UIBubbleShooter : MonoBehaviour
 
 
 
-
-
-
-
     void Start()
     {
         ShooterButton.onClick.AddListener(ClickShooter);
@@ -94,9 +90,6 @@ public class UIBubbleShooter : MonoBehaviour
     {
         // Normal 상태가 아니면 발사 불가 (Shooting, Destroying, RespawnBubbles 등)
         if (BubbleRotation.IsRotating || IngameManager.Instance.CurrentState != BattleState.Normal) return;
-
-        ShottingCountValue--;
-
 
         UpdateSelectedBubble();  // 선택 갱신
 

@@ -163,7 +163,7 @@ public class HexMap : MonoBehaviour
     }
     
     /// <summary>
-    /// 모든 등록된 버블의 위치를 최신 GetWorldPosition으로 업데이트
+    /// 모든 등록된 버블의 위치를 최신 GetWorldPosition으로 부드럽게 업데이트
     /// </summary>
     private void UpdateAllBubblePositions()
     {
@@ -176,7 +176,13 @@ public class HexMap : MonoBehaviour
                 {
                     Vector3 newWorldPos = GetWorldPosition(row, col);
                     bubble.SetHexPosition(row, col, newWorldPos, this);
-                    bubble.transform.position = newWorldPos;
+                    
+                    // 기존 이동 애니메이션 중지
+                    bubble.transform.DOKill();
+                    
+                    // 부드럽게 이동 (보스와 동일한 방식)
+                    bubble.transform.DOMove(newWorldPos, 0.5f)
+                        .SetEase(Ease.OutCubic);
                 }
             }
         }

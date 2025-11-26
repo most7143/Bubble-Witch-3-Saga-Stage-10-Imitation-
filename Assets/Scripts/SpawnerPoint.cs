@@ -1,5 +1,4 @@
 using UnityEngine;
-
 /// <summary>
 /// 개별 스포너 오브젝트에 붙이는 컴포넌트
 /// </summary>
@@ -14,6 +13,13 @@ public class SpawnerPoint : MonoBehaviour
     
     [Header("References")]
     [SerializeField] private HexMap hexMap;
+
+    public Sprite IdleSprite;
+
+    public Animator Animator;
+
+    public SpriteRenderer Renderer;
+    
     
     public bool IsLeftSpawner => isLeftSpawner;
     public int SpawnerRow => spawnerRow;
@@ -71,5 +77,23 @@ public class SpawnerPoint : MonoBehaviour
         {
             UpdatePosition();
         }
+    }
+
+   
+    public void ActivateSpawner()
+    {
+         if (Animator != null && !Animator.enabled)
+            {
+                Animator.enabled = true;
+            }
+    }
+
+    public void DeactivateSpawner()
+    {
+        if (Animator != null && Animator.enabled)
+        {
+            Animator.enabled = false;
+        }
+        Renderer.sprite = IdleSprite;
     }
 }

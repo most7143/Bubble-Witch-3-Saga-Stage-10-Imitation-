@@ -14,6 +14,7 @@ public class Boss : MonoBehaviour
     
     private Coroutine barFillAnimationCoroutine;
     private Tween barFillTween; // 진행 중인 애니메이션 추적용
+    private Coroutine spawnBubbleForRefillCoroutine; // SpawnBubbleForRefillCoroutine 추적용
 
     void Start()
     {
@@ -31,7 +32,7 @@ public class Boss : MonoBehaviour
         {
             Anim.SetTrigger("Death");
 
-            IngameManager.Instance.GameClear();
+            StartCoroutine(DeathCoroutine());
         }
         else
         {
@@ -39,6 +40,12 @@ public class Boss : MonoBehaviour
         }
 
         UpdateHealthBar();
+    }
+    
+    private IEnumerator DeathCoroutine()
+    {
+        yield return new WaitForSeconds(1f);
+        IngameManager.Instance.GameClear();
     }
 
     public void SpawnBubble()
@@ -51,7 +58,11 @@ public class Boss : MonoBehaviour
     /// </summary>
     public void SpawnBubbleForRefill()
     {
-        StartCoroutine(SpawnBubbleForRefillCoroutine());
+        // 이미 실행 중이면 중복 호출 방지
+        if (spawnBubbleForRefillCoroutine != null)
+            return;
+        
+        spawnBubbleForRefillCoroutine = StartCoroutine(SpawnBubbleForRefillCoroutine());
     }
 
     private IEnumerator SpawnBubbleCoroutine()
@@ -82,6 +93,9 @@ public class Boss : MonoBehaviour
         {
             BubbleSpawner.StartRefillBubbles();
         }
+        
+        // 코루틴 완료 후 참조 초기화
+        spawnBubbleForRefillCoroutine = null;
     }
 
     private void UpdateHealthBar()

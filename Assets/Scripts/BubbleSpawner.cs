@@ -84,6 +84,15 @@ public class BubbleSpawner : MonoBehaviour
     /// </summary>
     private IEnumerator InitialSpawnRoutine()
     {
+        // 버블 생성 로직 시작 - 모든 스포너 활성화
+        foreach (var spawner in spawnerPoints)
+        {
+            if (spawner != null)
+            {
+                spawner.ActivateSpawner();
+            }
+        }
+
         // 각 스포너별로 초기 버블 생성
         foreach (var spawner in spawnerPoints)
         {
@@ -112,6 +121,15 @@ public class BubbleSpawner : MonoBehaviour
 
             if (allSpawnersFull)
             {
+                // 버블 생성 로직 종료 - 모든 스포너 비활성화
+                foreach (var spawner in spawnerPoints)
+                {
+                    if (spawner != null)
+                    {
+                        spawner.DeactivateSpawner();
+                    }
+                }
+
                 // 모든 스포너가 최대 버블 수에 도달했으면 초기 배치 완료
                 isSpawning = false;
                 IngameManager.Instance.ChangeState(BattleState.Normal);
@@ -173,6 +191,15 @@ public class BubbleSpawner : MonoBehaviour
             }
         }
 
+        // 버블 생성 로직 시작 - 재생성이 필요한 스포너 활성화
+        foreach (var kvp in neededCounts)
+        {
+            if (kvp.Key != null)
+            {
+                kvp.Key.ActivateSpawner();
+            }
+        }
+
         // 모든 스포너가 동시에 버블 생성 시작
         List<Coroutine> refillCoroutines = new List<Coroutine>();
         foreach (var kvp in neededCounts)
@@ -185,6 +212,15 @@ public class BubbleSpawner : MonoBehaviour
         foreach (var coroutine in refillCoroutines)
         {
             yield return coroutine;
+        }
+
+        // 버블 생성 로직 종료 - 재생성이 완료된 스포너 비활성화
+        foreach (var kvp in neededCounts)
+        {
+            if (kvp.Key != null)
+            {
+                kvp.Key.DeactivateSpawner();
+            }
         }
 
         // 재배치 완료 후 Reloading 상태로 전환 (장전 애니메이션을 위해)
@@ -298,8 +334,6 @@ public class BubbleSpawner : MonoBehaviour
         {
             spawnOrderCounters[spawner] = 0;
         }
-        int order = ++spawnOrderCounters[spawner];
-        bubble.SetSpawnOrder(order);
 
         Vector3 spawnPosition = spawner.transform.position;
         bubble.transform.position = spawnPosition;
