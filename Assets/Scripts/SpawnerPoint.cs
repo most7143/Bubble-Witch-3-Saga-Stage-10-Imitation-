@@ -46,11 +46,10 @@ public class SpawnerPoint : MonoBehaviour
         }
         
         // Transform 위치 업데이트
-        if (hexMap.Positions != null && 
-            spawnerRow >= 0 && spawnerRow < hexMap.Rows &&
+        if (spawnerRow >= 0 && spawnerRow < hexMap.Rows &&
             spawnerCol >= 0 && spawnerCol < hexMap.Cols)
         {
-            Vector3 spawnerPos = hexMap.Positions[spawnerRow, spawnerCol];
+            Vector3 spawnerPos = hexMap.GetWorldPosition(spawnerRow, spawnerCol);
             transform.position = spawnerPos;
         }
     }

@@ -256,8 +256,9 @@ public class UIBubbleShot : MonoBehaviour
             // 빈 공간이 아니면 인접 빈 공간 찾기
             if (!HexMap.IsEmpty(row, col))
             {
-                var (emptyRow, emptyCol) = HexMap.FindEmptyAdjacentCell(row, col, true);
-                snappedPos = HexMap.Positions[emptyRow, emptyCol];
+                var emptyCells = HexMapHandler.GetEmptyAdjacentCells(HexMap, row, col);
+                var (emptyRow, emptyCol) = emptyCells.Count > 0 ? emptyCells[0] : (row, col);
+                snappedPos = HexMap.GetWorldPosition(emptyRow, emptyCol);
                 row = emptyRow;
                 col = emptyCol;
             }
@@ -363,7 +364,6 @@ public class UIBubbleShot : MonoBehaviour
     {
         // Preview 좌표 가져오기, 순서대로 확인
         Vector3? previewPos = Preview?.GetPreviewPosition()
-                             ?? Preview?.GetLastPreviewPosition()
                              ?? Preview?.GetPreviewPosition();
 
         if (!previewPos.HasValue)
@@ -384,7 +384,7 @@ public class UIBubbleShot : MonoBehaviour
 
         // WorldToGrid로 변환 후 다시 월드 좌표로 변환
         var (row, col) = HexMap.WorldToGrid(position);
-        return HexMap.Positions[row, col];
+        return HexMap.GetWorldPosition(row, col);
     }
 
 

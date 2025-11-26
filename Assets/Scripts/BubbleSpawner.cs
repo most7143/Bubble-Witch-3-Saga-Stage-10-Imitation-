@@ -437,7 +437,8 @@ public class BubbleSpawner : MonoBehaviour
                 }
                 else
                 {
-                    var (emptyRow, emptyCol) = hexMap.FindEmptyAdjacentCell(firstRow, firstCol, true);
+                    var emptyCells = HexMapHandler.GetEmptyAdjacentCells(hexMap, firstRow, firstCol);
+                    var (emptyRow, emptyCol) = emptyCells.Count > 0 ? emptyCells[0] : (firstRow, firstCol);
                     hexMap.RegisterBubble(emptyRow, emptyCol, bubble, false);
                     bubbles[i] = (bubble, 0, emptyRow, emptyCol);
                     StartCoroutine(MoveBubbleSmoothly(bubble, emptyRow, emptyCol));
@@ -493,7 +494,8 @@ public class BubbleSpawner : MonoBehaviour
                         }
                         else
                         {
-                            var (emptyRow, emptyCol) = hexMap.FindEmptyAdjacentCell(extendedNextRow, extendedNextCol, true);
+                            var emptyCells = HexMapHandler.GetEmptyAdjacentCells(hexMap, extendedNextRow, extendedNextCol);
+                            var (emptyRow, emptyCol) = emptyCells.Count > 0 ? emptyCells[0] : (extendedNextRow, extendedNextCol);
                             hexMap.RegisterBubble(emptyRow, emptyCol, bubble, false);
                             StartCoroutine(MoveBubbleSmoothly(bubble, emptyRow, emptyCol));
                             bubbles[i] = (bubble, nextPathIndex, emptyRow, emptyCol);
@@ -545,7 +547,8 @@ public class BubbleSpawner : MonoBehaviour
             }
             else
             {
-                var (emptyRow, emptyCol) = hexMap.FindEmptyAdjacentCell(nextRow, nextCol, true);
+                var emptyCells = HexMapHandler.GetEmptyAdjacentCells(hexMap, nextRow, nextCol);
+                var (emptyRow, emptyCol) = emptyCells.Count > 0 ? emptyCells[0] : (nextRow, nextCol);
                 hexMap.RegisterBubble(emptyRow, emptyCol, bubble, false);
                 StartCoroutine(MoveBubbleSmoothly(bubble, emptyRow, emptyCol));
                 bubbles[i] = (bubble, nextPathIndex, emptyRow, emptyCol);
@@ -746,7 +749,7 @@ public class BubbleSpawner : MonoBehaviour
         if (!hexMap.IsValidCell(row, col) || bubble == null)
             yield break;
 
-        Vector3 targetPosition = hexMap.Positions[row, col];
+        Vector3 targetPosition = hexMap.GetWorldPosition(row, col);
         Vector3 startPosition = bubble.transform.position;
         float elapsedTime = 0f;
 
@@ -784,7 +787,7 @@ public class BubbleSpawner : MonoBehaviour
         if (!hexMap.IsValidCell(row, col))
             return;
 
-        Vector3 targetPosition = hexMap.Positions[row, col];
+        Vector3 targetPosition = hexMap.GetWorldPosition(row, col);
         bubble.transform.position = targetPosition;
     }
 
@@ -799,13 +802,14 @@ public class BubbleSpawner : MonoBehaviour
         // 위치가 비어있지 않으면 인접한 빈 공간 찾기
         if (!hexMap.IsEmpty(row, col))
         {
-            var (emptyRow, emptyCol) = hexMap.FindEmptyAdjacentCell(row, col, true);
+            var emptyCells = HexMapHandler.GetEmptyAdjacentCells(hexMap, row, col);
+            var (emptyRow, emptyCol) = emptyCells.Count > 0 ? emptyCells[0] : (row, col);
             row = emptyRow;
             col = emptyCol;
         }
 
         // 버블 위치 설정
-        Vector3 targetPosition = hexMap.Positions[row, col];
+        Vector3 targetPosition = hexMap.GetWorldPosition(row, col);
         bubble.transform.position = targetPosition;
 
         // 헥스맵에 등록 (생성 중이므로 checkMatches = false로 설정하여 매치 체크 실행 안 함)
@@ -848,8 +852,30 @@ public class BubbleSpawner : MonoBehaviour
 
                 if (hexMap.IsValidCell(row1, col1) && hexMap.IsValidCell(row2, col2))
                 {
-                    Vector3 pos1 = hexMap.Positions[row1, col1];
-                    Vector3 pos2 = hexMap.Positions[row2, col2];
+                    Vector3 pos1 = hexMap.GetWorldPosition(row1, col1);
+                    Vector3 pos2 = hexMap.GetWorldPosition(row2, col2);
+                    
+                    // 디버그: 실제 버블 위치와 비교
+                    if (spawnerBubbles.ContainsKey(spawner) && spawnerBubbles[spawner].Count > 0)
+                    {
+                        var bubbles = spawnerBubbles[spawner];
+                        for (int b = 0; b < bubbles.Count && b < path.Count; b++)
+                        {
+                            var (bubble, pathIdx, bubbleRow, bubbleCol) = bubbles[b];
+                            if (bubble != null && bubbleRow == row1 && bubbleCol == col1)
+                            {
+                                Vector3 actualPos = bubble.transform.position;
+                                float distance = Vector3.Distance(pos1, actualPos);
+                                if (distance > 0.1f)
+                                {
+                                    // 실제 버블 위치를 빨간색으로 표시
+                                    Gizmos.color = Color.red;
+                                    Gizmos.DrawWireSphere(actualPos, 0.15f);
+                                    Gizmos.color = pathColor;
+                                }
+                            }
+                        }
+                    }
 
                     // 선 그리기
                     Gizmos.DrawLine(pos1, pos2);
@@ -865,7 +891,7 @@ public class BubbleSpawner : MonoBehaviour
                 var (lastRow, lastCol) = path[path.Count - 1];
                 if (hexMap.IsValidCell(lastRow, lastCol))
                 {
-                    Vector3 lastPos = hexMap.Positions[lastRow, lastCol];
+                    Vector3 lastPos = hexMap.GetWorldPosition(lastRow, lastCol);
                     Gizmos.DrawWireSphere(lastPos, 0.1f);
                 }
             }

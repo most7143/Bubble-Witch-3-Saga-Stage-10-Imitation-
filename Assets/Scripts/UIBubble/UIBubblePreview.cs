@@ -4,15 +4,6 @@ using System.Collections.Generic;
 
 public class UIBubblePreview : MonoBehaviour
 {
-
-    private struct HysteresisInfo
-    {
-        public Bubble lastHitBubble;
-        public Vector3 lastPreviewPos;
-        public bool lastWasLeftSide;
-    }
-
-
     [Header("프리뷰 설정")]
     [SerializeField] private GameObject previewBubblePrefab;
     [SerializeField] private float previewAlpha = 0.5f;
@@ -28,29 +19,17 @@ public class UIBubblePreview : MonoBehaviour
 
     private GameObject previewBubbleInstance;
     private Vector3? previewPosition = null;
+    private (int row, int col)? previewGridPosition = null;
     private readonly List<GameObject> neroPreviewInstances = new List<GameObject>();
     private readonly List<Vector3> neroPreviewWorldPositions = new List<Vector3>();
     private Vector3? neroPreviewCenter = null;
-
-    private HysteresisInfo hysteresis;
 
     private float hexMapBubbleRadius = 0.25f;
     private float hexMapWidth = 0.5f;
     private float hexMapHeight = 0.433f;
 
-    private const float HYSTERESIS_THRESHOLD = 0.1f;
-
-
     public Vector3? GetPreviewPosition() => previewPosition;
     public bool HasPreviewPosition() => previewPosition.HasValue;
-    public Vector3? GetLastPreviewPosition() => hysteresis.lastPreviewPos != Vector3.zero ? hysteresis.lastPreviewPos : previewPosition;
-
-
-    private float GetHysteresisThreshold() => hexMapBubbleRadius * HYSTERESIS_THRESHOLD;
-
-    private bool GetLastWasLeftSide() => hysteresis.lastWasLeftSide;
-
-
 
     void Start()
     {
@@ -65,7 +44,6 @@ public class UIBubblePreview : MonoBehaviour
         UpdateNeroPreviewBubbles();
     }
 
-
     private void LoadHexMapInfo()
     {
         if (HexMapController != null)
@@ -75,7 +53,6 @@ public class UIBubblePreview : MonoBehaviour
             hexMapBubbleRadius = HexMapController.BubbleRadius > 0 ? HexMapController.BubbleRadius : hexMapBubbleRadius;
         }
     }
-
 
     private void SetupPreviewBubble()
     {
@@ -105,20 +82,27 @@ public class UIBubblePreview : MonoBehaviour
         }
     }
 
-
     private void UpdatePreviewBubble()
     {
         if (previewBubbleInstance == null)
             return;
 
-        if (previewPosition.HasValue && Aim.IsAiming == true)
+        if (previewGridPosition.HasValue && Aim.IsAiming == true && HexMapController != null)
         {
-            previewBubbleInstance.transform.position = previewPosition.Value;
-            previewBubbleInstance.SetActive(true);
+            var (row, col) = previewGridPosition.Value;
+            if (HexMapController.IsValidCell(row, col))
+            {
+                Vector3 currentPosition = HexMapController.GetWorldPosition(row, col);
+                previewBubbleInstance.transform.position = currentPosition;
+                previewBubbleInstance.SetActive(true);
+            }
+            else
+            {
+                HidePreviewBubble();
+            }
         }
         else if (previewPosition.HasValue && Aim.IsAiming == true)
         {
-            // fallback: gridPosition이 없으면 기존 방식 사용
             previewBubbleInstance.transform.position = previewPosition.Value;
             previewBubbleInstance.SetActive(true);
         }
@@ -150,6 +134,7 @@ public class UIBubblePreview : MonoBehaviour
 
             neroPreviewWorldPositions.Clear();
             EnsureNeroPreviewPool(cells.Count);
+
             for (int i = 0; i < neroPreviewInstances.Count; i++)
             {
                 if (i >= cells.Count)
@@ -165,7 +150,7 @@ public class UIBubblePreview : MonoBehaviour
                     continue;
                 }
 
-                Vector3 worldPos = HexMapController.Positions[row, col];
+                Vector3 worldPos = HexMapController.GetWorldPosition(row, col);
                 neroPreviewInstances[i].transform.position = worldPos;
                 neroPreviewInstances[i].SetActive(true);
                 neroPreviewWorldPositions.Add(worldPos);
@@ -178,21 +163,27 @@ public class UIBubblePreview : MonoBehaviour
         }
     }
 
-
-
     public void SetPreviewPosition(Vector3? position, Bubble hitBubble = null, bool isLeftSide = false)
     {
         previewPosition = position;
 
-        if (position.HasValue)
-            SetHysteresisInfo(hitBubble, position.Value, isLeftSide);
+        if (position.HasValue && HexMapController != null)
+        {
+            var (row, col) = HexMapController.WorldToGrid(position.Value);
+            previewGridPosition = HexMapController.IsValidCell(row, col)
+                ? (row, col)
+                : null;
+        }
         else
-            ResetHysteresis();
+        {
+            previewGridPosition = null;
+        }
     }
 
     public void SetNeroPreviewCenter(Vector3? centerPosition)
     {
         neroPreviewCenter = centerPosition;
+
         if (!centerPosition.HasValue)
         {
             HideNeroPreviewBubbles();
@@ -200,112 +191,73 @@ public class UIBubblePreview : MonoBehaviour
         }
     }
 
-
-    public Vector3? HandleBubbleHit(RaycastHit2D hit, Vector3 bubbleCenter, Bubble hitBubble, Vector2 direction, Vector3 surfacePoint, Action<Vector3> onSurfacePointAdded = null)
+    public Vector3? HandleBubbleHit(
+        RaycastHit2D hit,
+        Vector3 bubbleCenter,
+        Bubble hitBubble,
+        Vector2 direction,
+        Vector3 surfacePoint,
+        Action<Vector3> onSurfacePointAdded = null)
     {
-        // 초기 검증
-        if (hitBubble == null)
+        if (hitBubble == null || HexMapController == null)
         {
+            SetPreviewPosition(null);
             return null;
         }
 
-
         onSurfacePointAdded?.Invoke(surfacePoint);
 
-        float threshold = GetHysteresisThreshold();
-        bool useHysteresis = IsSameBubble(hitBubble, bubbleCenter);
+        bool isLeftSide = hit.point.x < bubbleCenter.x;
 
-        bool isLeftSide = (hit.point.x - bubbleCenter.x) < 0f;
-        if (useHysteresis)
-        {
-            if (GetLastWasLeftSide())
-                isLeftSide = (hit.point.x - bubbleCenter.x) <= threshold;
-            else
-                isLeftSide = (hit.point.x - bubbleCenter.x) < -threshold;
-        }
-
-        if (Mathf.Abs(hit.point.x - bubbleCenter.x) < threshold)
-            isLeftSide = direction.x < 0f ? true : GetLastWasLeftSide();
-
-
-        // 착지 위치 계산
-        Vector3 emptySpacePos = HexMapController.FindEmptyHexSpace(bubbleCenter, hit.point, isLeftSide);
-
-        // 착지 위치가 유효한지 확인 (bubbleCenter의 인접 위치인지, 그리고 비어있는지)
         var (centerRow, centerCol) = HexMapController.WorldToGrid(bubbleCenter);
-        var (landingRow, landingCol) = HexMapController.WorldToGrid(emptySpacePos);
+        if (!HexMapController.IsValidCell(centerRow, centerCol))
+        {
+            SetPreviewPosition(null);
+            return null;
+        }
 
-
-        // 인접 위치인지 확인
         var adjacent = HexMapController.GetAdjacentCells(centerRow, centerCol);
-        bool isAdjacent = false;
+
+        List<(int row, int col)> bottomCells = new List<(int row, int col)>();
         foreach (var (row, col) in adjacent)
         {
-            if (row == landingRow && col == landingCol)
-            {
-                isAdjacent = true;
-                break;
-            }
+            if (row > centerRow)
+                bottomCells.Add((row, col));
         }
 
+        (int row, int col)? targetCell = null;
 
-        foreach (var (row, col) in adjacent)
+        if (bottomCells.Count >= 2)
         {
-            bool isEmpty = HexMapController.IsEmpty(row, col);
+            bottomCells.Sort((a, b) =>
+            {
+                Vector3 posA = HexMapController.GetWorldPosition(a.row, a.col);
+                Vector3 posB = HexMapController.GetWorldPosition(b.row, b.col);
+                return posA.x.CompareTo(posB.x);
+            });
 
+            targetCell = isLeftSide ? bottomCells[0] : bottomCells[^1];
         }
-
-        // 인접 위치가 아니거나 비어있지 않으면 프리뷰 표시 안 함
-        if (!isAdjacent || !HexMapController.IsEmpty(landingRow, landingCol))
+        else if (bottomCells.Count == 1)
         {
-            // 인접 위치 중 빈 공간 찾기
-            bool foundEmpty = false;
-            foreach (var (row, col) in adjacent)
-            {
-                if (HexMapController.IsEmpty(row, col))
-                {
-                    emptySpacePos = HexMapController.Positions[row, col];
-                    foundEmpty = true;
-                    break;
-                }
-            }
+            targetCell = bottomCells[0];
+        }
 
-            if (!foundEmpty)
+        if (targetCell.HasValue)
+        {
+            var (row, col) = targetCell.Value;
+
+            if (HexMapController.IsEmpty(row, col))
             {
-                SetPreviewPosition(null);
-                ResetHysteresis();
-                return null;
+                Vector3 previewPos = HexMapController.GetWorldPosition(row, col);
+                SetPreviewPosition(previewPos);
+                return previewPos;
             }
         }
 
-        SetHysteresisInfo(hitBubble, emptySpacePos, isLeftSide);
-        SetPreviewPosition(emptySpacePos, hitBubble, isLeftSide);
-        return emptySpacePos;
+        SetPreviewPosition(null);
+        return null;
     }
-
-
-    private void SetHysteresisInfo(Bubble hitBubble, Vector3 previewPos, bool isLeftSide)
-    {
-        hysteresis.lastHitBubble = hitBubble;
-        hysteresis.lastPreviewPos = previewPos;
-        hysteresis.lastWasLeftSide = isLeftSide;
-    }
-
-    public void ResetHysteresis()
-    {
-        hysteresis.lastHitBubble = null;
-        hysteresis.lastPreviewPos = Vector3.zero;
-        hysteresis.lastWasLeftSide = false;
-    }
-
-    private bool IsSameBubble(Bubble hitBubble, Vector3 bubblePos)
-    {
-        return hysteresis.lastHitBubble != null &&
-               hysteresis.lastHitBubble == hitBubble &&
-               Vector3.Distance(bubblePos, hysteresis.lastHitBubble.transform.position) < 0.001f;
-    }
-
-
 
     public void HidePreviewBubble()
     {
@@ -318,12 +270,10 @@ public class UIBubblePreview : MonoBehaviour
 
     private void HideNeroPreviewBubbles()
     {
-        for (int i = 0; i < neroPreviewInstances.Count; i++)
+        foreach (var inst in neroPreviewInstances)
         {
-            if (neroPreviewInstances[i] != null)
-                neroPreviewInstances[i].SetActive(false);
+            if (inst != null) inst.SetActive(false);
         }
-        neroPreviewWorldPositions.Clear();
     }
 
     public List<Vector3> GetNeroPreviewWorldPositions()
@@ -352,21 +302,16 @@ public class UIBubblePreview : MonoBehaviour
             if (current.dist >= range)
                 continue;
 
-            List<(int row, int col)> adjacent = HexMapController.GetAdjacentCells(current.row, current.col);
-            foreach (var (adjRow, adjCol) in adjacent)
+            foreach (var adj in HexMapController.GetAdjacentCells(current.row, current.col))
             {
-                if (!visited.Contains((adjRow, adjCol)))
+                if (!visited.Contains(adj))
                 {
-                    visited.Add((adjRow, adjCol));
-                    queue.Enqueue((adjRow, adjCol, current.dist + 1));
+                    visited.Add(adj);
+                    queue.Enqueue((adj.row, adj.col, current.dist + 1));
                 }
             }
         }
 
         return result;
     }
-
-
-
-
 }

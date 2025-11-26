@@ -19,6 +19,7 @@ public class UIBubbleAim : MonoBehaviour
     [SerializeField] private float bubbleRadius = 0.4f;
     [SerializeField] private int maxReflections = 5;
     [SerializeField] private float lineWidth = 0.05f;
+    [SerializeField] private float raycastRadius = 0.1f; // 레이캐스트 충돌 범위 (CircleCast 사용)
 
     [Header("프리뷰")]
     public UIBubblePreview Preview;
@@ -115,9 +116,33 @@ public class UIBubbleAim : MonoBehaviour
         float remaining = maxAimDistance;
         aimPoints.Add(start);
 
-        RaycastHit2D hit = Physics2D.Raycast(pos, dir, remaining, hitMask);
-        if (!hit.collider)
+        // 벽 충돌은 Raycast로 먼저 확인 (정확한 벽 충돌 감지)
+        RaycastHit2D wallHit = Physics2D.Raycast(pos, dir, remaining, wallLayer);
+        
+        // 버블 충돌은 CircleCast로 확인 (충돌 범위 확장)
+        RaycastHit2D bubbleHit = Physics2D.CircleCast(pos, raycastRadius, dir, remaining, bubbleLayer);
+        
+        // 벽과 버블 중 더 가까운 것을 선택
+        RaycastHit2D hit = default(RaycastHit2D);
+        bool hasWallHit = wallHit.collider != null;
+        bool hasBubbleHit = bubbleHit.collider != null;
+        
+        if (hasWallHit && hasBubbleHit)
         {
+            // 둘 다 있으면 더 가까운 것 선택
+            hit = wallHit.distance < bubbleHit.distance ? wallHit : bubbleHit;
+        }
+        else if (hasWallHit)
+        {
+            hit = wallHit;
+        }
+        else if (hasBubbleHit)
+        {
+            hit = bubbleHit;
+        }
+        else
+        {
+            // 충돌 없음
             AddLineEnd(pos, dir, remaining, start.z);
             return;
         }
@@ -137,9 +162,28 @@ public class UIBubbleAim : MonoBehaviour
             float reflectRemain = remaining - hit.distance;
             Vector2 reflectPos = hit.point + hit.normal * 0.05f;
 
-            RaycastHit2D reflectHit = Physics2D.Raycast(reflectPos, reflectDir, reflectRemain, hitMask);
+            // 반사된 레이도 동일한 방식으로 처리
+            RaycastHit2D reflectWallHit = Physics2D.Raycast(reflectPos, reflectDir, reflectRemain, wallLayer);
+            RaycastHit2D reflectBubbleHit = Physics2D.CircleCast(reflectPos, raycastRadius, reflectDir, reflectRemain, bubbleLayer);
+            
+            RaycastHit2D reflectHit = default(RaycastHit2D);
+            bool hasReflectWall = reflectWallHit.collider != null;
+            bool hasReflectBubble = reflectBubbleHit.collider != null;
+            
+            if (hasReflectWall && hasReflectBubble)
+            {
+                reflectHit = reflectWallHit.distance < reflectBubbleHit.distance ? reflectWallHit : reflectBubbleHit;
+            }
+            else if (hasReflectWall)
+            {
+                reflectHit = reflectWallHit;
+            }
+            else if (hasReflectBubble)
+            {
+                reflectHit = reflectBubbleHit;
+            }
 
-            if (!reflectHit.collider)
+            if (reflectHit.collider == null)
             {
                 AddLineEnd(reflectPos, reflectDir, reflectRemain, start.z);
             }
@@ -251,7 +295,6 @@ public class UIBubbleAim : MonoBehaviour
             if (Preview != null)
             {
                 Preview.HidePreviewBubble();
-                Preview.ResetHysteresis();
                 Preview.SetNeroPreviewCenter(null);
             }
         }
