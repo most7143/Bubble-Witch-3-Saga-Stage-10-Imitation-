@@ -25,12 +25,14 @@ public class SpawnerPoint : MonoBehaviour
     public int SpawnerRow => spawnerRow;
     public int SpawnerCol => spawnerCol;
     
+    /// <summary>
+    /// HexMap 참조 및 위치 초기화
+    /// </summary>
     void Start()
     {
         if (hexMap == null)
             hexMap = FindObjectOfType<HexMap>();
         
-        // 스포너 위치 자동 조정
         UpdatePosition();
     }
     
@@ -41,17 +43,15 @@ public class SpawnerPoint : MonoBehaviour
     {
         if (hexMap == null) return;
         
-        // bool 값에 따라 기본 위치 설정
         if (isLeftSpawner)
         {
-            spawnerCol = 3; // 왼쪽 스포너는 col 3
+            spawnerCol = 3;
         }
         else
         {
-            spawnerCol = 7; // 오른쪽 스포너는 col 7
+            spawnerCol = 7;
         }
         
-        // Transform 위치 업데이트
         if (spawnerRow >= 0 && spawnerRow < hexMap.Rows &&
             spawnerCol >= 0 && spawnerCol < hexMap.Cols)
         {
@@ -70,16 +70,20 @@ public class SpawnerPoint : MonoBehaviour
         UpdatePosition();
     }
     
+    /// <summary>
+    /// 에디터에서 값 변경 시 위치 업데이트
+    /// </summary>
     void OnValidate()
     {
-        // 에디터에서 값이 변경되면 위치 업데이트
         if (Application.isPlaying)
         {
             UpdatePosition();
         }
     }
 
-   
+    /// <summary>
+    /// 스포너 애니메이터 활성화
+    /// </summary>
     public void ActivateSpawner()
     {
          if (Animator != null && !Animator.enabled)
@@ -88,6 +92,9 @@ public class SpawnerPoint : MonoBehaviour
             }
     }
 
+    /// <summary>
+    /// 스포너 애니메이터 비활성화 및 아이들 스프라이트 설정
+    /// </summary>
     public void DeactivateSpawner()
     {
         if (Animator != null && Animator.enabled)

@@ -1,4 +1,3 @@
-// Simplified UIBubbleAim with unified wall collision helpers
 using UnityEngine;
 using System;
 using System.Collections.Generic;
@@ -19,7 +18,7 @@ public class UIBubbleAim : MonoBehaviour
     [SerializeField] private float bubbleRadius = 0.4f;
     [SerializeField] private int maxReflections = 5;
     [SerializeField] private float lineWidth = 0.05f;
-    [SerializeField] private float raycastRadius = 0.1f; // 레이캐스트 충돌 범위 (CircleCast 사용)
+    [SerializeField] private float raycastRadius = 0.1f;
 
     [Header("프리뷰")]
     public UIBubblePreview Preview;
@@ -31,6 +30,9 @@ public class UIBubbleAim : MonoBehaviour
     private LayerMask hitMask;
     private readonly List<Vector3> aimPoints = new List<Vector3>();
 
+    /// <summary>
+    /// 초기화 및 LineRenderer 설정
+    /// </summary>
     void Start()
     {
         cam = Camera.main;
@@ -38,17 +40,16 @@ public class UIBubbleAim : MonoBehaviour
         SetupLineRenderer();
     }
 
-
+    /// <summary>
+    /// 조준 상태 업데이트
+    /// </summary>
     void Update()
     {
-
-        // Normal 상태가 아니면 조준 불가 (Shooting, Destroying, RespawnBubbles 등)
         if(IngameManager.Instance.CurrentState != BattleState.Normal)
         {
             IsAiming=false;
             return;
         }
-
 
         if (IsAiming)
         {
@@ -64,6 +65,9 @@ public class UIBubbleAim : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// LineRenderer 초기 설정
+    /// </summary>
     private void SetupLineRenderer()
     {
         AimLineRenderer.positionCount = 0;
@@ -72,6 +76,9 @@ public class UIBubbleAim : MonoBehaviour
         AimLineRenderer.useWorldSpace = true;
     }
 
+    /// <summary>
+    /// 조준선 계산 및 업데이트
+    /// </summary>
     private void UpdateAim()
     {
         aimPoints.Clear();
@@ -91,9 +98,10 @@ public class UIBubbleAim : MonoBehaviour
 
         DrawLine();
     }
-    
 
-    // 방향 가져오기, 조준 모드에 따라 달라지게 설정정
+    /// <summary>
+    /// 조준 방향 계산 (조준 모드에 따라 달라짐)
+    /// </summary>
     private Vector2 GetAimDirection(Vector3 start)
     {
         Vector2 inputPos = GetPointerPosition();
@@ -104,32 +112,33 @@ public class UIBubbleAim : MonoBehaviour
         return dir.sqrMagnitude > 0.001f ? dir.normalized : Vector2.up;
     }
 
+    /// <summary>
+    /// 포인터 위치 가져오기 (터치 또는 마우스)
+    /// </summary>
     private Vector2 GetPointerPosition()
     {
         if (Input.touchCount > 0) return Input.GetTouch(0).position;
         return Input.mousePosition;
     }
 
+    /// <summary>
+    /// 조준선 반사 계산 (벽 및 버블 충돌 처리)
+    /// </summary>
     private void CalculateReflections(Vector3 start, Vector2 dir)
     {
         Vector2 pos = start;
         float remaining = maxAimDistance;
         aimPoints.Add(start);
 
-        // 벽 충돌은 Raycast로 먼저 확인 (정확한 벽 충돌 감지)
         RaycastHit2D wallHit = Physics2D.Raycast(pos, dir, remaining, wallLayer);
-        
-        // 버블 충돌은 CircleCast로 확인 (충돌 범위 확장)
         RaycastHit2D bubbleHit = Physics2D.CircleCast(pos, raycastRadius, dir, remaining, bubbleLayer);
         
-        // 벽과 버블 중 더 가까운 것을 선택
         RaycastHit2D hit = default(RaycastHit2D);
         bool hasWallHit = wallHit.collider != null;
         bool hasBubbleHit = bubbleHit.collider != null;
         
         if (hasWallHit && hasBubbleHit)
         {
-            // 둘 다 있으면 더 가까운 것 선택
             hit = wallHit.distance < bubbleHit.distance ? wallHit : bubbleHit;
         }
         else if (hasWallHit)
@@ -142,7 +151,6 @@ public class UIBubbleAim : MonoBehaviour
         }
         else
         {
-            // 충돌 없음
             AddLineEnd(pos, dir, remaining, start.z);
             return;
         }
@@ -162,7 +170,6 @@ public class UIBubbleAim : MonoBehaviour
             float reflectRemain = remaining - hit.distance;
             Vector2 reflectPos = hit.point + hit.normal * 0.05f;
 
-            // 반사된 레이도 동일한 방식으로 처리
             RaycastHit2D reflectWallHit = Physics2D.Raycast(reflectPos, reflectDir, reflectRemain, wallLayer);
             RaycastHit2D reflectBubbleHit = Physics2D.CircleCast(reflectPos, raycastRadius, reflectDir, reflectRemain, bubbleLayer);
             
@@ -198,6 +205,9 @@ public class UIBubbleAim : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 버블 충돌 처리 및 프리뷰 위치 설정
+    /// </summary>
     private void HandleBubbleHit(RaycastHit2D hit, Vector3 start, Vector2 direction, float hitDistance, Vector2? startPos = null)
     {
         Vector2 rayStartPos = startPos ?? (Vector2)start;
@@ -205,8 +215,6 @@ public class UIBubbleAim : MonoBehaviour
         Bubble hitBubble = hit.collider.GetComponent<Bubble>();
         if (hitBubble == null) return;
 
-        // 버블이 hexMap에 등록되어 있는지 확인 (등록되지 않은 버블은 조준선이 무시)
-        // hexRow와 hexCol이 -1이면 등록되지 않은 상태
         if (!IsBubbleRegisteredInHexMap(hitBubble))
         {
             return;
@@ -244,13 +252,23 @@ public class UIBubbleAim : MonoBehaviour
         else aimPoints.Add(surfacePoint);
     }
 
+    /// <summary>
+    /// 조준선 끝점 추가
+    /// </summary>
     private void AddLineEnd(Vector2 pos, Vector2 dir, float dist, float z)
     {
         Vector2 end = pos + dir * dist;
         aimPoints.Add(new Vector3(end.x, end.y, z));
     }
 
+    /// <summary>
+    /// 콜라이더가 버블 레이어인지 확인
+    /// </summary>
     private bool IsBubble(Collider2D c) => (bubbleLayer.value & (1 << c.gameObject.layer)) != 0;
+
+    /// <summary>
+    /// 콜라이더가 벽 레이어인지 확인
+    /// </summary>
     private bool IsWall(Collider2D c) => (wallLayer.value & (1 << c.gameObject.layer)) != 0;
 
     /// <summary>
@@ -261,10 +279,12 @@ public class UIBubbleAim : MonoBehaviour
         if (bubble == null)
             return false;
 
-        // Bubble의 IsRegisteredInHexMap 메서드 사용
-        return bubble.IsRegisteredInHexMap();
+        return bubble.IsRegisteredInHexMap;
     }
 
+    /// <summary>
+    /// LineRenderer에 조준선 그리기
+    /// </summary>
     private void DrawLine()
     {
         if (aimPoints.Count < 2)
@@ -277,12 +297,18 @@ public class UIBubbleAim : MonoBehaviour
         AimLineRenderer.SetPositions(aimPoints.ToArray());
     }
 
+    /// <summary>
+    /// 현재 조준 방향 반환
+    /// </summary>
     public Vector2 GetAimDirection()
     {
         if (aimPoints.Count < 2) return Vector2.up;
         return (aimPoints[1] - aimPoints[0]).normalized;
     }
 
+    /// <summary>
+    /// 조준 활성화/비활성화 설정
+    /// </summary>
     public void SetAimEnabled(bool enabled, int mode = 1)
     {
         IsAiming = enabled;
@@ -300,15 +326,18 @@ public class UIBubbleAim : MonoBehaviour
         }
     }
 
-
-    /// 단일 Raycast로 벽 충돌을 확인
+    /// <summary>
+    /// 단일 Raycast로 벽 충돌 확인
+    /// </summary>
     public bool TryGetWallHit(Vector3 start, Vector2 dir, float distance, out RaycastHit2D hit)
     {
         hit = Physics2D.Raycast(start, dir, distance, wallLayer);
         return hit.collider != null;
     }
 
+    /// <summary>
     /// 현재 조준 경로에서 첫 번째 벽 충돌점 가져오기
+    /// </summary>
     public Vector3? GetFirstWallHitAlongAim()
     {
         if (aimPoints.Count < 2) return null;
@@ -324,7 +353,9 @@ public class UIBubbleAim : MonoBehaviour
         return null;
     }
 
+    /// <summary>
     /// 시작점 → 프리뷰 위치 사이에서 벽이 먼저 있는지 확인
+    /// </summary>
     public bool TryGetWallBetween(Vector3 start, Vector3 preview, out RaycastHit2D hit)
     {
         Vector2 dir = ((Vector2)preview - (Vector2)start).normalized;
@@ -332,7 +363,9 @@ public class UIBubbleAim : MonoBehaviour
         return TryGetWallHit(start, dir, dist, out hit);
     }
 
-    // path 반환
+    /// <summary>
+    /// 조준 경로 포인트 리스트 반환
+    /// </summary>
     public List<Vector3> GetPathPoints()
     {
         if (aimPoints == null || aimPoints.Count < 2) return null;

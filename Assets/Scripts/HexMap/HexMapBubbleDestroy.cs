@@ -18,12 +18,19 @@ public class HexMapBubbleDestroy : MonoBehaviour
     [SerializeField] [Range(0.05f, 1f)] private float dropSuctionVerticalScale = 0.35f;
     [SerializeField] private float dropSuctionTiltDegrees = 90f;
     [SerializeField] [Range(0.1f, 2f)] private float dropSuctionRadiusScale = 1f;
+
+    /// <summary>
+    /// HexMap 초기화
+    /// </summary>
     public void Initialize(HexMap hexMap)
     {
         hexMapController = hexMap;
         bubbleSpawner = FindObjectOfType<BubbleSpawner>();
     }
 
+    /// <summary>
+    /// Nero 버블 타겟 위치 설정
+    /// </summary>
     public void SetPendingNeroTargets(List<Vector3> targets)
     {
         pendingNeroTargetsWorld.Clear();
@@ -36,20 +43,19 @@ public class HexMapBubbleDestroy : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Nero 버블 타겟 위치 초기화
+    /// </summary>
     public void ClearPendingNeroTargets()
     {
         pendingNeroTargetsWorld.Clear();
     }
 
-
-
-
-    // ================================================================
-    // 착지 후 호출: 동일 타입 3개 이상이면 레벨별 전파식으로 팝
-    // ================================================================
+    /// <summary>
+    /// 착지 후 호출: 동일 타입 3개 이상이면 레벨별 전파식으로 팝
+    /// </summary>
     public void CheckAndPopMatches(int row, int col)
     {
-        // 버블 생성 중(RespawnBubbles)이면 파괴 로직 실행 안 함
         if (IngameManager.Instance != null && 
             IngameManager.Instance.CurrentState == BattleState.RespawnBubbles)
         {
@@ -59,23 +65,20 @@ public class HexMapBubbleDestroy : MonoBehaviour
         Bubble center = hexMapController.GetBubble(row, col);
         if (center == null) return;
 
-        // 파괴를 일으킨 버블 타입을 먼저 저장
-        BubbleTypes attackerType = center.GetBubbleType();
+        BubbleTypes attackerType = center.BubbleType;
 
-        if (center.GetBubbleType() == BubbleTypes.Nero)
+        if (center.BubbleType == BubbleTypes.Nero)
         {
             HandleNeroBubble(row, col);
             return;
         }
 
-        // Spell 타입인 경우 인접 버블 모두 터트리기
-        if (center.GetBubbleType() == BubbleTypes.Spell)
+        if (center.BubbleType == BubbleTypes.Spell)
         {
             PopSpellBubble(row, col);
             return;
         }
 
-        // 착지한 버블 주변에 Spell 버블이 있는지 체크
         List<(int row, int col)> adjacentCells = hexMapController.GetAdjacentCells(row, col);
         List<(int row, int col)> adjacentSpellBubbles = new List<(int row, int col)>();
         
@@ -84,43 +87,37 @@ public class HexMapBubbleDestroy : MonoBehaviour
             if (hexMapController.IsValidCell(adjRow, adjCol))
             {
                 Bubble adjBubble = hexMapController.GetBubble(adjRow, adjCol);
-                if (adjBubble != null && adjBubble.GetBubbleType() == BubbleTypes.Spell)
+                if (adjBubble != null && adjBubble.BubbleType == BubbleTypes.Spell)
                 {
                     adjacentSpellBubbles.Add((adjRow, adjCol));
                 }
             }
         }
         
-        // 인접한 모든 Spell 버블 터트리기
         foreach (var (spellRow, spellCol) in adjacentSpellBubbles)
         {
             PopSpellBubble(spellRow, spellCol);
         }
         
-        // Spell 버블이 터졌으면 여기서 종료 (연쇄 반응은 PopSpellBubble 내부에서 처리)
         if (adjacentSpellBubbles.Count > 0)
         {
             return;
         }
 
-        // Red, Blue, Yellow 타입은 기존 로직 실행
         List<List<(int r, int c)>> levels = HexMapHandler.CollectConnectedByLevel(hexMapController, row, col);
         if (levels.Count == 0) return;
 
-        // 총 개수 체크
         int totalCount = 0;
         foreach (var level in levels)
             totalCount += level.Count;
 
         if (totalCount < 3)
         {
-            // 매치가 없으면 콤보 카운트 초기화
             if (ScoreSystem.Instance != null)
             {
                 ScoreSystem.Instance.BubbleDestroyFail();
             }
             
-            // 매치가 없으면 Reloading 상태로 전환
             if (IngameManager.Instance.CurrentState == BattleState.Shooting)
             {
                 IngameManager.Instance.ChangeState(BattleState.Reloading);
@@ -128,7 +125,6 @@ public class HexMapBubbleDestroy : MonoBehaviour
             return;
         }
 
-        // 폭발하는 버블들 중 페어리가 있는지 체크
         bool hasFairy = false;
         HashSet<(int r, int c)> toRemove = new HashSet<(int r, int c)>();
         foreach (var level in levels)
@@ -144,7 +140,6 @@ public class HexMapBubbleDestroy : MonoBehaviour
             }
         }
 
-        // 페어리가 있으면 Hitting 상태로 전환, 없으면 Destroying 상태로 전환
         if (hasFairy)
         {
             IngameManager.Instance.ChangeState(BattleState.Hitting);
@@ -154,13 +149,10 @@ public class HexMapBubbleDestroy : MonoBehaviour
             IngameManager.Instance.ChangeState(BattleState.Destroying);
         }
 
-        // 터질 버블들을 제거한 상태에서 고립 버블 미리 계산
         List<(int r, int c)> floatingBubbles = HexMapHandler.FindFloatingBubblesAfterRemoval(hexMapController, toRemove);
 
-        // 첫 레벨 즉시 파괴
         DestroyLevelImmediate(levels[0], attackerType);
 
-        // 나머지 레벨 파동 처리
         if (levels.Count > 1)
         {
             List<List<(int r, int c)>> remainingLevels = levels.GetRange(1, levels.Count - 1);
@@ -168,27 +160,22 @@ public class HexMapBubbleDestroy : MonoBehaviour
         }
         else
         {
-            // 레벨이 1개뿐이면 고립 버블만 처리
             if (floatingBubbles.Count > 0)
             {
                 StartCoroutine(RemoveFloatingBubblesAndNotify(floatingBubbles, hasFairy));
             }
             else
             {
-                // 고립 버블이 없으면 파괴 성공 처리
                 if (ScoreSystem.Instance != null)
                 {
                     ScoreSystem.Instance.BubbleDestroySuceess();
                 }
                 
-                // 고립 버블이 없으면
                 if (hasFairy)
                 {
-                    // 페어리가 있으면 Hitting 상태는 유지 (체력 연출 후 Reloading으로 전환됨)
                 }
                 else
                 {
-                    // 페어리가 없으면 Reloading 상태로 전환
                     if (IngameManager.Instance.CurrentState == BattleState.Destroying)
                     {
                         IngameManager.Instance.ChangeState(BattleState.Reloading);
@@ -198,6 +185,9 @@ public class HexMapBubbleDestroy : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Nero 버블 처리
+    /// </summary>
     private void HandleNeroBubble(int row, int col)
     {
         HashSet<(int r, int c)> targetCells = BuildNeroTargetCells(row, col);
@@ -363,7 +353,7 @@ public class HexMapBubbleDestroy : MonoBehaviour
         
         if (spellBubble != null)
         {
-            attackerType = spellBubble.GetBubbleType();
+            attackerType = spellBubble.BubbleType;
         }
 
         // 터질 버블 리스트 (자신 포함)
@@ -518,33 +508,11 @@ public class HexMapBubbleDestroy : MonoBehaviour
         }
     }
 
-    // 첫 레벨 즉시 파괴 (딜레이 없음)
+    /// <summary>
+    /// 첫 레벨 즉시 파괴 (딜레이 없음)
+    /// </summary>
     private void DestroyLevelImmediate(List<(int r, int c)> level, BubbleTypes attackerType = BubbleTypes.Red)
     {
-        // 파괴 전에 인접한 Spell 버블 체크
-        HashSet<(int r, int c)> spellBubblesToPop = new HashSet<(int r, int c)>();
-        
-        // level을 HashSet으로 변환
-        HashSet<(int r, int c)> levelSet = new HashSet<(int r, int c)>(level);
-        
-        foreach (var (r, c) in level)
-        {
-            // 인접한 Spell 버블 찾기
-            CheckAdjacentSpellBubbles(r, c, spellBubblesToPop, levelSet);
-        }
-        
-        // 인접한 Spell 버블들도 터트리기
-        foreach (var (spellRow, spellCol) in spellBubblesToPop)
-        {
-            // Spell 버블이 아직 존재하고 파괴되지 않았으면 터트리기
-            Bubble spellBubble = hexMapController.GetBubble(spellRow, spellCol);
-            if (spellBubble != null && spellBubble.GetBubbleType() == BubbleTypes.Spell)
-            {
-                PopSpellBubble(spellRow, spellCol);
-            }
-        }
-        
-        // 원래 버블들 파괴
         foreach (var (r, c) in level)
         {
             Bubble b = hexMapController.GetBubble(r, c);
@@ -567,35 +535,10 @@ public class HexMapBubbleDestroy : MonoBehaviour
         }
     }
 
-/// <summary>
-/// 인접한 Spell 버블 찾기
-/// </summary>
-private void CheckAdjacentSpellBubbles(int row, int col, HashSet<(int r, int c)> spellBubbles, HashSet<(int r, int c)> excludeList)
-{
-    List<(int row, int col)> adjacentCells = hexMapController.GetAdjacentCells(row, col);
-    
-    foreach (var (adjRow, adjCol) in adjacentCells)
-    {
-        // 이미 파괴 예정인 버블은 제외
-        if (excludeList.Contains((adjRow, adjCol)))
-            continue;
-            
-        // 유효한 셀이고 버블이 있으면 체크
-        if (hexMapController.IsValidCell(adjRow, adjCol))
-        {
-            Bubble adjBubble = hexMapController.GetBubble(adjRow, adjCol);
-            if (adjBubble != null && adjBubble.GetBubbleType() == BubbleTypes.Spell)
-            {
-                spellBubbles.Add((adjRow, adjCol));
-            }
-        }
-    }
-}
-
-// ================================================================
-// 단계별 파동 처리
-// ================================================================
-private IEnumerator DestroyByWaveAndNotify(List<List<(int r, int c)>> levels, List<(int r, int c)> preCalculatedFloatingBubbles, bool hasFairy, BubbleTypes attackerType = BubbleTypes.Red)
+    /// <summary>
+    /// 단계별 파동 처리
+    /// </summary>
+    private IEnumerator DestroyByWaveAndNotify(List<List<(int r, int c)>> levels, List<(int r, int c)> preCalculatedFloatingBubbles, bool hasFairy, BubbleTypes attackerType = BubbleTypes.Red)
 {
     float delayPerLevel = 0.08f;
     
@@ -612,26 +555,6 @@ private IEnumerator DestroyByWaveAndNotify(List<List<(int r, int c)>> levels, Li
     for (int lv = 0; lv < levels.Count; lv++)
     {
         List<(int r, int c)> group = levels[lv];
-        
-        // 파괴 전에 인접한 Spell 버블 체크
-        HashSet<(int r, int c)> spellBubblesToPop = new HashSet<(int r, int c)>();
-        
-        foreach (var (r, c) in group)
-        {
-            // 인접한 Spell 버블 찾기
-            CheckAdjacentSpellBubbles(r, c, spellBubblesToPop, allToDestroy);
-        }
-        
-        // 인접한 Spell 버블들도 터트리기
-        foreach (var (spellRow, spellCol) in spellBubblesToPop)
-        {
-            // Spell 버블이 아직 존재하고 파괴되지 않았으면 터트리기
-            Bubble spellBubble = hexMapController.GetBubble(spellRow, spellCol);
-            if (spellBubble != null && spellBubble.GetBubbleType() == BubbleTypes.Spell)
-            {
-                PopSpellBubble(spellRow, spellCol);
-            }
-        }
 
         foreach (var (r, c) in group)
         {
@@ -683,17 +606,17 @@ private IEnumerator DestroyByWaveAndNotify(List<List<(int r, int c)>> levels, Li
     }
 }
 
-    // ================================================================
-    // 기존 BFS 같은 타입 찾기 (HexMapHandler 사용)
-    // ================================================================
+    /// <summary>
+    /// 같은 타입의 연결된 버블 찾기 (HexMapHandler 사용)
+    /// </summary>
     public List<(int row, int col)> FindConnectedSameType(int row, int col)
     {
         return HexMapHandler.FindConnectedSameType(hexMapController, row, col);
     }
 
-    // ================================================================
-    // 고립 버블 체크
-    // ================================================================
+    /// <summary>
+    /// 고립 버블 체크 및 제거
+    /// </summary>
     public void CheckFloatingAfterPop()
     {
         List<(int, int)> floating = FindFloatingBubbles();
@@ -701,30 +624,34 @@ private IEnumerator DestroyByWaveAndNotify(List<List<(int r, int c)>> levels, Li
             RemoveFloatingBubbles(floating);
     }
 
+    /// <summary>
+    /// 고립 버블 찾기
+    /// </summary>
     public List<(int r, int c)> FindFloatingBubbles()
     {
         return HexMapHandler.FindFloatingBubbles(hexMapController);
     }
 
-    // ================================================================
-    // 고립 버블 제거
-    // ================================================================
+    /// <summary>
+    /// 고립 버블 제거
+    /// </summary>
     public void RemoveFloatingBubbles(List<(int r, int c)> floatingList)
     {
         StartCoroutine(RemoveFloatingBubblesSpread(floatingList));
     }
 
+    /// <summary>
+    /// 고립 버블을 순차적으로 떨어뜨리기
+    /// </summary>
     private IEnumerator RemoveFloatingBubblesSpread(List<(int r, int c)> floatingList)
     {
         if (floatingList.Count == 0) yield break;
 
         var start = floatingList[0];
         
-        // HexMapHandler를 사용하여 depth 계산
         Dictionary<(int, int), int> depth = HexMapHandler.CalculateDepthFromStart(
             hexMapController, start.Item1, start.Item2, floatingList);
         
-        // depth 순으로 정렬
         List<(int r, int c)> ordered = new List<(int, int)>(floatingList);
         ordered.Sort((a, b) =>
         {
@@ -739,8 +666,6 @@ private IEnumerator DestroyByWaveAndNotify(List<List<(int r, int c)>> levels, Li
         float delayStep = 0.05f;
         foreach (var (r, c) in ordered)
         {
-            // GetBubble으로 가져오기 전에 이미 해제되었을 수 있으므로
-            // 직접 grid에서 확인하거나, UnregisterBubble 전에 가져오기
             Bubble bubble = hexMapController.GetBubble(r, c);
             if (bubble != null)
             {
@@ -785,11 +710,13 @@ private IEnumerator DestroyByWaveAndNotify(List<List<(int r, int c)>> levels, Li
         }
     }
 
+    /// <summary>
+    /// 고립 버블을 떨어뜨리기 (드롭 포인트로 이동 또는 물리 시뮬레이션)
+    /// </summary>
     private void DropFloatingBubble(Bubble bubble, int r, int c)
     {
         if (bubble == null) return;
 
-        // hexMap에서 해제만 수행 (Collider는 그대로 유지)
         hexMapController.UnregisterBubble(r, c);
 
         if (DropPoint == null)
@@ -827,13 +754,14 @@ private IEnumerator DestroyByWaveAndNotify(List<List<(int r, int c)>> levels, Li
 
         suctionSeq.OnComplete(() =>
         {
-            // 블랙홀에 빨려들어가기 직전에 점수 추가
             bubble.DropBubbleAddScore();
-            
             hexMapController.ObjectPool?.DespawnBubble(bubble);
         });
     }
 
+    /// <summary>
+    /// 나선형 경로 생성 (드롭 포인트로 이동)
+    /// </summary>
     private Vector3[] BuildSpiralPath(Vector3 start, Vector3 target, float turns, int segments)
     {
         List<Vector3> points = new List<Vector3>(Mathf.Max(segments, 2));
@@ -869,6 +797,9 @@ private IEnumerator DestroyByWaveAndNotify(List<List<(int r, int c)>> levels, Li
         return points.ToArray();
     }
 
+    /// <summary>
+    /// 드롭 포인트의 월드 위치 가져오기
+    /// </summary>
     private Vector3 GetWorldPositionFromDropPoint(RectTransform dropPoint)
     {
         if (dropPoint == null)
@@ -879,6 +810,9 @@ private IEnumerator DestroyByWaveAndNotify(List<List<(int r, int c)>> levels, Li
         return (corners[0] + corners[2]) * 0.5f;
     }
 
+    /// <summary>
+    /// 지연 후 버블 파괴
+    /// </summary>
     private IEnumerator DestroyBubbleAfterDelay(Bubble bubble, float delay)
     {
         yield return new WaitForSeconds(delay);

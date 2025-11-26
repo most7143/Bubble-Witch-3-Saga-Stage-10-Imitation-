@@ -13,6 +13,9 @@ public class ScoreSystem : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 싱글톤 인스턴스 초기화
+    /// </summary>
     private void Awake()
     {
         if (instance != null)
@@ -25,9 +28,11 @@ public class ScoreSystem : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 점수 보너스 카운트 초기화
+    /// </summary>
     private void Start()
     {
-        // 게임 시작 시 ScoreBonusCount를 1로 초기화
         ScoreBonusCount = 1;
     }
 
@@ -65,10 +70,8 @@ public class ScoreSystem : MonoBehaviour
             cam = uiCanvas.worldCamera;
         }
 
-        // 월드 좌표를 스크린 좌표로 변환
         Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(cam, worldPosition);
 
-        // 스크린 좌표를 Canvas의 로컬 좌표로 변환
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
             canvasRect,
             screenPoint,
@@ -79,13 +82,15 @@ public class ScoreSystem : MonoBehaviour
         return localPoint;
     }
 
+    /// <summary>
+    /// 버블 파괴 시 점수 추가
+    /// </summary>
     public void DestoryBubbleAddScore(BubbleTypes type, Transform point)
     {
         int currentScore = 0;
 
         if (type != BubbleTypes.Nero)
         {
-            // ScoreBonusCount가 0이면 최소 1로 처리
             int bonus = ScoreBonusCount > 0 ? ScoreBonusCount : 1;
             currentScore = DestroyBubbleScore * bonus;
         }
@@ -96,26 +101,33 @@ public class ScoreSystem : MonoBehaviour
 
         Score += currentScore;
         
-        // 월드 좌표를 UI 좌표로 변환
         Vector2 uiPosition = ConvertWorldToUIPosition(point.position);
         ObjectPool.Instance.SpawnUIFloaty(currentScore, uiPosition, uiCanvas);
     }
 
+    /// <summary>
+    /// 버블 드롭 시 점수 추가
+    /// </summary>
     public void DropBubbleAddScore(Transform point)
     {
         int currentScore = DropBubbleScore;
         Score += currentScore;
         
-        // 월드 좌표를 UI 좌표로 변환
         Vector2 uiPosition = ConvertWorldToUIPosition(point.position);
         ObjectPool.Instance.SpawnUIFloaty(currentScore, uiPosition, uiCanvas);
     }
 
+    /// <summary>
+    /// 버블 파괴 성공 시 보너스 카운트 증가
+    /// </summary>
     public void BubbleDestroySuceess()
     {
         ScoreBonusCount++;
     }
 
+    /// <summary>
+    /// 버블 파괴 실패 시 보너스 카운트 리셋
+    /// </summary>
     public void BubbleDestroyFail()
     {
         ScoreBonusCount = 1;

@@ -31,6 +31,9 @@ public class UIBubblePreview : MonoBehaviour
     public Vector3? GetPreviewPosition() => previewPosition;
     public bool HasPreviewPosition() => previewPosition.HasValue;
 
+    /// <summary>
+    /// 초기화 및 프리뷰 버블 설정
+    /// </summary>
     void Start()
     {
         LoadHexMapInfo();
@@ -38,12 +41,18 @@ public class UIBubblePreview : MonoBehaviour
         EnsureNeroPreviewPool(1);
     }
 
+    /// <summary>
+    /// 프리뷰 버블 및 Nero 프리뷰 업데이트
+    /// </summary>
     void Update()
     {
         UpdatePreviewBubble();
         UpdateNeroPreviewBubbles();
     }
 
+    /// <summary>
+    /// HexMap 정보 로드
+    /// </summary>
     private void LoadHexMapInfo()
     {
         if (HexMapController != null)
@@ -54,6 +63,9 @@ public class UIBubblePreview : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 프리뷰 버블 인스턴스 생성 및 설정
+    /// </summary>
     private void SetupPreviewBubble()
     {
         previewBubbleInstance = Instantiate(previewBubblePrefab);
@@ -62,11 +74,17 @@ public class UIBubblePreview : MonoBehaviour
         HidePreviewBubble();
     }
 
+    /// <summary>
+    /// Nero 프리뷰 프리팹 가져오기
+    /// </summary>
     private GameObject GetNeroPreviewPrefab()
     {
         return neroAreaPreviewPrefab != null ? neroAreaPreviewPrefab : previewBubblePrefab;
     }
 
+    /// <summary>
+    /// Nero 프리뷰 풀 확보 (필요한 개수만큼)
+    /// </summary>
     private void EnsureNeroPreviewPool(int requiredCount)
     {
         GameObject prefab = GetNeroPreviewPrefab();
@@ -82,6 +100,9 @@ public class UIBubblePreview : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 프리뷰 버블 위치 업데이트
+    /// </summary>
     private void UpdatePreviewBubble()
     {
         if (previewBubbleInstance == null)
@@ -112,6 +133,9 @@ public class UIBubblePreview : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Nero 프리뷰 버블들 업데이트
+    /// </summary>
     private void UpdateNeroPreviewBubbles()
     {
         if (neroPreviewCenter.HasValue && Aim != null && Aim.IsAiming && HexMapController != null)
@@ -163,6 +187,9 @@ public class UIBubblePreview : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 프리뷰 위치 설정
+    /// </summary>
     public void SetPreviewPosition(Vector3? position, Bubble hitBubble = null, bool isLeftSide = false)
     {
         previewPosition = position;
@@ -180,6 +207,9 @@ public class UIBubblePreview : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Nero 프리뷰 중심 위치 설정
+    /// </summary>
     public void SetNeroPreviewCenter(Vector3? centerPosition)
     {
         neroPreviewCenter = centerPosition;
@@ -191,6 +221,9 @@ public class UIBubblePreview : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 버블 충돌 처리 및 착지 위치 계산
+    /// </summary>
     public Vector3? HandleBubbleHit(
         RaycastHit2D hit,
         Vector3 bubbleCenter,
@@ -259,6 +292,9 @@ public class UIBubblePreview : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// 프리뷰 버블 숨기기
+    /// </summary>
     public void HidePreviewBubble()
     {
         if (previewBubbleInstance != null)
@@ -268,6 +304,9 @@ public class UIBubblePreview : MonoBehaviour
         neroPreviewWorldPositions.Clear();
     }
 
+    /// <summary>
+    /// Nero 프리뷰 버블들 숨기기
+    /// </summary>
     private void HideNeroPreviewBubbles()
     {
         foreach (var inst in neroPreviewInstances)
@@ -276,11 +315,17 @@ public class UIBubblePreview : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Nero 프리뷰 월드 위치 리스트 반환
+    /// </summary>
     public List<Vector3> GetNeroPreviewWorldPositions()
     {
         return new List<Vector3>(neroPreviewWorldPositions);
     }
 
+    /// <summary>
+    /// 지정된 범위 내의 셀 리스트 반환
+    /// </summary>
     private List<(int row, int col)> GetCellsWithinRange(int row, int col, int range)
     {
         List<(int row, int col)> result = new List<(int row, int col)>();

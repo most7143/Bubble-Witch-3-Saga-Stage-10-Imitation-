@@ -4,9 +4,11 @@ public class ResourcesManager : MonoBehaviour
 {
     public static ResourcesManager Instance;
 
+    /// <summary>
+    /// 싱글톤 인스턴스 초기화 및 씬 전환 시 유지
+    /// </summary>
     private void Awake()
     {
-
         if(Instance != null)
         {
             Destroy(gameObject);
@@ -19,6 +21,9 @@ public class ResourcesManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
+    /// <summary>
+    /// 버블 타입에 해당하는 스프라이트 반환
+    /// </summary>
     public Sprite GetBubbleSprite(BubbleTypes type)
     {
         switch(type)
@@ -36,6 +41,9 @@ public class ResourcesManager : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// 버블 타입에 해당하는 애니메이터 컨트롤러 반환
+    /// </summary>
     public RuntimeAnimatorController GetBubbleAnimatorController(BubbleTypes type)
     {
         switch(type)

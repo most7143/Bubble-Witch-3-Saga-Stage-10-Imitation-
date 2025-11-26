@@ -24,19 +24,32 @@ public class Bubble : MonoBehaviour
     private int hexCol = -1;
     private HexMap hexMap;
 
-   
-
-    
-
     /// <summary>
     /// 버블이 hexMap에 등록되어 있는지 확인
     /// </summary>
-    public bool IsRegisteredInHexMap()
+    public bool IsRegisteredInHexMap
     {
-        return hexRow >= 0 && hexCol >= 0 && hexMap != null;
+        get { return hexRow >= 0 && hexCol >= 0 && hexMap != null; }
     }
 
-    public BubbleTypes GetBubbleType() => Type;
+    /// <summary>
+    /// 버블 타입 가져오기
+    /// </summary>
+    public BubbleTypes BubbleType
+    {
+        get { return Type; }
+    }
+
+    /// <summary>
+    /// 헥사맵 위치 가져오기
+    /// </summary>
+    public Vector3 HexMapPosition
+    {
+        get { return hexMapPosition; }
+    }
+    /// <summary>
+    /// 버블 타입 설정 및 시각적 업데이트
+    /// </summary>
     public void SetBubble(BubbleTypes type, bool isShot = false)
     {
         Type = type;
@@ -46,9 +59,11 @@ public class Bubble : MonoBehaviour
 
     private Sequence fairyAnimationSequence;
 
+    /// <summary>
+    /// 버블 파괴 시 애니메이션 정리 및 헥사맵에서 해제
+    /// </summary>
     void OnDestroy()
     {
-        // 애니메이션 정리
         if (fairyAnimationSequence != null && fairyAnimationSequence.IsActive())
         {
             fairyAnimationSequence.Kill();
@@ -58,16 +73,13 @@ public class Bubble : MonoBehaviour
     }
 
     /// <summary>
-    /// 헥사맵에 버블 등록
+    /// 요정 설정 및 활성화
     /// </summary>
-
-
     public void SetFairy(bool isShot = false)
     {
         IsFairy = false;
         FairySpriteRenderer.gameObject.SetActive(false);
 
-        // 발사된 버블이거나 Spell 타입이면 페어리 없음
         if (isShot || Type == BubbleTypes.Spell)
             return;
 
@@ -79,8 +91,6 @@ public class Bubble : MonoBehaviour
             FairySpriteRenderer.gameObject.SetActive(true);
             FairyAnimation();
         }
-
-
     }
 
     /// <summary>
@@ -108,13 +118,12 @@ public class Bubble : MonoBehaviour
         }
     }
 
+
+
+
     /// <summary>
-    /// 헥사맵 위치 가져오기
+    /// 버블 스프라이트 및 애니메이션 컨트롤러 업데이트
     /// </summary>
-    public Vector3 GetHexMapPosition() => hexMapPosition;
-
-
-
     void UpdateVisual()
     {
         if (SpriteRenderer != null)
@@ -128,52 +137,49 @@ public class Bubble : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 충돌 시 속도 반사 처리
+    /// </summary>
     void OnCollisionEnter2D(Collision2D collision)
     {
-        // 충돌 상대가 벽 또는 버블이면 처리
-        // 필요에 따라 tag 또는 layer 체크 가능
         Rigidbody2D rb = Rigid;
         if (rb == null) return;
 
-        // 충돌 법선 방향 가져오기
         Vector2 normal = collision.contacts[0].normal;
-
-        // 현재 속도 반사
         Vector2 velocity = rb.linearVelocity;
         Vector2 reflected = Vector2.Reflect(velocity, normal);
 
-        // 반사력 조정 (강도)
-        float bounceStrength = 1f; // 1f = 현재 속도 유지, 0.5f = 절반만 튕김 등
+        float bounceStrength = 1f;
         rb.linearVelocity = reflected * bounceStrength;
     }
 
+    /// <summary>
+    /// 버블 파괴 애니메이션 트리거
+    /// </summary>
     public void DestroyBubble()
     {
         Anim.SetTrigger("Bomb");
     }
 
-
+    /// <summary>
+    /// 요정 원형 이동 애니메이션 시작
+    /// </summary>
     public void FairyAnimation()
     {
         if (IsFairy && FairySpriteRenderer != null)
         {
-            // 기존 애니메이션이 있으면 정리
             if (fairyAnimationSequence != null && fairyAnimationSequence.IsActive())
             {
                 fairyAnimationSequence.Kill();
             }
 
-            // 요정 스프라이트의 초기 위치 저장 (버블 중심 기준)
             FairySpriteRenderer.transform.localPosition = Vector3.zero;
             Vector3 startPosition = Vector3.zero;
 
-            // 애니메이션 시퀀스 생성
             fairyAnimationSequence = DOTween.Sequence();
 
-            // 랜덤하게 이동하는 애니메이션 반복
             CreateFairyMovement(fairyAnimationSequence, startPosition);
 
-            // 무한 반복
             fairyAnimationSequence.SetLoops(-1);
         }
     }
@@ -187,8 +193,7 @@ public class Bubble : MonoBehaviour
         float maxRadius = 0.35f;
         float radius = Random.Range(minRadius, maxRadius);
 
-        // 반경에 비례해 한 바퀴 도는 시간도 길어지도록 비율 적용
-        float baseDuration = 4f; // 반경 minRadius일 때 기준
+        float baseDuration = 4f;
         float revolutionDuration = baseDuration * (radius / minRadius);
 
         int waypointCount = 16;
@@ -222,20 +227,22 @@ public class Bubble : MonoBehaviour
         sequence.AppendCallback(() => FairySpriteRenderer.transform.localPosition = firstPoint);
     }
 
-
+    /// <summary>
+    /// 버블이 공격으로 파괴될 때 점수 추가 및 Nero 게이지 증가
+    /// </summary>
     public void AttackedDestoryBubble(BubbleTypes type)
     {
-
         ScoreSystem.Instance.DestoryBubbleAddScore(type, transform);
-
 
         if (IngameManager.Instance.NeroObj.IsActive)
         {
             IngameManager.Instance.NeroObj.AddFillCount(2);
         }
-
     }
 
+    /// <summary>
+    /// 버블이 떨어질 때 점수 추가
+    /// </summary>
     public void DropBubbleAddScore()
     {
         ScoreSystem.Instance.DropBubbleAddScore(transform);

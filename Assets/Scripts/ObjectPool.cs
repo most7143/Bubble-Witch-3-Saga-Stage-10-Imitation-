@@ -17,11 +17,9 @@ public class ObjectPool : MonoBehaviour
 
     public List<UIFloaty> UIFloatyList = new List<UIFloaty>();
 
-    // Canvas 관련 코드 제거 (ScoreSystem으로 이동)
-    // [SerializeField] private Canvas uiCanvas;
-    // private Canvas uiCanvas;
-
-
+    /// <summary>
+    /// 싱글톤 인스턴스 초기화
+    /// </summary>
     private void Awake()
     {
         if (Instance == null)
@@ -34,43 +32,37 @@ public class ObjectPool : MonoBehaviour
         }
     }
 
-
-  
-
-  private void Start()
-  {
-    for(int i = 0; i < PoolSize; i++)
+    /// <summary>
+    /// 오브젝트 풀 초기화
+    /// </summary>
+    private void Start()
     {
-       Fairy fairy = AddedFairy();
-       fairy.gameObject.SetActive(false);
+        for(int i = 0; i < PoolSize; i++)
+        {
+           Fairy fairy = AddedFairy();
+           fairy.gameObject.SetActive(false);
 
-       UIFloaty uiFloaty = AddedUIFloaty();
-       uiFloaty.gameObject.SetActive(false);
+           UIFloaty uiFloaty = AddedUIFloaty();
+           uiFloaty.gameObject.SetActive(false);
+        }
     }
 
-    // Canvas 찾기 코드 제거 (ScoreSystem으로 이동)
-    // if (UIFloatyList.Count > 0 && UIFloatyList[0] != null)
-    // {
-    //     uiCanvas = UIFloatyList[0].GetComponentInParent<Canvas>();
-    // }
-  }
-
+    /// <summary>
+    /// 버블 스폰 (풀에서 재사용 또는 새로 생성)
+    /// </summary>
     public Bubble SpawnBubble(BubbleTypes type)
     {
         foreach (Bubble bubble in BubbleList)
         {
             if (!bubble.gameObject.activeSelf)
             {
-                bubble.SetBubble(type, false); // 스포너에서 생성된 버블은 isShot=false
+                bubble.SetBubble(type, false);
                 bubble.gameObject.SetActive(true);
                 return bubble;
             }
         }
 
-
-
         return AddedBubble(type);
-
     }
 
     public UIFloaty AddedUIFloaty()

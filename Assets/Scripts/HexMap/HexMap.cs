@@ -55,18 +55,23 @@ public class HexMap : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 그리드 초기화 및 HexMapBubbleDestroy 초기화
+    /// </summary>
     void Awake()
     {
         InitializeGrid();
         HexMapBubbleDestroy.Initialize(this);
         
-        // Boss 초기 위치 저장
         if (IngameManager.Instance != null && IngameManager.Instance.BossObj != null)
         {
             originalBossPosition = IngameManager.Instance.BossObj.transform.position;
         }
     }
 
+    /// <summary>
+    /// 헥사 그리드 초기화
+    /// </summary>
     void InitializeGrid()
     {
         grid = new Bubble[rows, cols];
@@ -74,6 +79,9 @@ public class HexMap : MonoBehaviour
         hexHeight = Mathf.Sqrt(3f) * bubbleRadius;
     }
 
+    /// <summary>
+    /// 그리드 좌표를 월드 좌표로 변환
+    /// </summary>
     public Vector3 GetWorldPosition(int row, int col)
     {
         if (!IsValidCell(row, col))
@@ -83,7 +91,6 @@ public class HexMap : MonoBehaviour
         float x = startPosition.x + col * hexWidth + xOffset;
         float y = startPosition.y - row * (hexHeight * 0.75f);
         
-        // limitSpawnerRows를 넘어간 버블이 있으면 Y 오프셋 적용
         if (maxRegisteredRow > limitSpawnerRows)
         {
             int rowOffset = maxRegisteredRow - limitSpawnerRows;
@@ -94,6 +101,9 @@ public class HexMap : MonoBehaviour
         return new Vector3(x, y, 0f);
     }
 
+    /// <summary>
+    /// 버블을 헥사맵에 등록
+    /// </summary>
     public void RegisterBubble(int row, int col, Bubble bubble, bool checkMatches = false)
     {
         if (!IsValidCell(row, col))
@@ -111,13 +121,10 @@ public class HexMap : MonoBehaviour
         Vector3 worldPos = GetWorldPosition(row, col);
         bubble.SetHexPosition(row, col, worldPos, this);
 
-        // maxRegisteredRow가 변경되고 limitSpawnerRows를 넘어갔다면 모든 버블 위치 업데이트
-        // (이미 배치된 버블만 업데이트, 이동 중인 버블은 MoveBubbleSmoothly가 처리)
         if (previousMaxRow != maxRegisteredRow && maxRegisteredRow > limitSpawnerRows)
         {
             UpdateAllBubblePositions();
         }
-        // maxRegisteredRow가 limitSpawnerRows 이하로 내려갔다면 원래 위치로 복귀
         else if (previousMaxRow > limitSpawnerRows && maxRegisteredRow <= limitSpawnerRows)
         {
             UpdateAllBubblePositions();
@@ -127,6 +134,9 @@ public class HexMap : MonoBehaviour
             HexMapBubbleDestroy.CheckAndPopMatches(row, col);
     }
 
+    /// <summary>
+    /// 버블을 헥사맵에서 해제
+    /// </summary>
     public void UnregisterBubble(int row, int col)
     {
         if (!IsValidCell(row, col)) return;
@@ -141,6 +151,9 @@ public class HexMap : MonoBehaviour
             UpdateMaxRegisteredRow();
     }
 
+    /// <summary>
+    /// 최대 등록된 행 번호 업데이트
+    /// </summary>
     private void UpdateMaxRegisteredRow()
     {
         int previousMaxRow = maxRegisteredRow;
@@ -150,12 +163,10 @@ public class HexMap : MonoBehaviour
                 if (grid[r, c] != null)
                     maxRegisteredRow = Mathf.Max(maxRegisteredRow, r);
         
-        // maxRegisteredRow가 변경되었고 limitSpawnerRows를 넘어갔다면 모든 버블 위치 업데이트
         if (previousMaxRow != maxRegisteredRow && maxRegisteredRow > limitSpawnerRows)
         {
             UpdateAllBubblePositions();
         }
-        // maxRegisteredRow가 limitSpawnerRows 이하로 내려갔다면 원래 위치로 복귀
         else if (previousMaxRow > limitSpawnerRows && maxRegisteredRow <= limitSpawnerRows)
         {
             UpdateAllBubblePositions();
@@ -177,17 +188,14 @@ public class HexMap : MonoBehaviour
                     Vector3 newWorldPos = GetWorldPosition(row, col);
                     bubble.SetHexPosition(row, col, newWorldPos, this);
                     
-                    // 기존 이동 애니메이션 중지
                     bubble.transform.DOKill();
                     
-                    // 부드럽게 이동 (보스와 동일한 방식)
                     bubble.transform.DOMove(newWorldPos, 0.5f)
                         .SetEase(Ease.OutCubic);
                 }
             }
         }
         
-        // Boss 위치도 업데이트
         UpdateBossPosition();
     }
     
@@ -199,13 +207,11 @@ public class HexMap : MonoBehaviour
         if (IngameManager.Instance == null || IngameManager.Instance.BossObj == null)
             return;
         
-        // 기존 애니메이션 중지
         if (bossMoveTween != null && bossMoveTween.IsActive())
         {
             bossMoveTween.Kill();
         }
         
-        // Y 오프셋 계산
         float yOffset = 0f;
         if (maxRegisteredRow > limitSpawnerRows)
         {
@@ -213,23 +219,27 @@ public class HexMap : MonoBehaviour
             yOffset = rowOffset * (hexHeight * 0.75f);
         }
         
-        // Boss의 새로운 위치 계산 (X, Z는 유지, Y만 오프셋 적용)
         Vector3 targetPosition = new Vector3(
             originalBossPosition.x,
             originalBossPosition.y + yOffset,
             originalBossPosition.z
         );
         
-        // 부드럽게 이동 (0.5초)
         bossMoveTween = IngameManager.Instance.BossObj.transform.DOMoveY(targetPosition.y, 0.5f)
             .SetEase(Ease.OutCubic);
     }
 
+    /// <summary>
+    /// 유효한 셀인지 확인
+    /// </summary>
     public bool IsValidCell(int row, int col)
     {
         return row >= 0 && col >= 0 && row < rows && col < cols;
     }
 
+    /// <summary>
+    /// 인접한 셀 좌표 리스트 반환
+    /// </summary>
     public List<(int row, int col)> GetAdjacentCells(int row, int col)
     {
         List<(int, int)> list = new List<(int, int)>();
@@ -263,25 +273,33 @@ public class HexMap : MonoBehaviour
         return list;
     }
 
+    /// <summary>
+    /// 셀이 비어있는지 확인
+    /// </summary>
     public bool IsEmpty(int row, int col)
     {
         return IsValidCell(row, col) && grid[row, col] == null;
     }
 
+    /// <summary>
+    /// 특정 셀의 버블 가져오기
+    /// </summary>
     public Bubble GetBubble(int row, int col)
     {
         return IsValidCell(row, col) ? grid[row, col] : null;
     }
 
+    /// <summary>
+    /// 월드 좌표를 그리드 좌표로 변환
+    /// </summary>
     public (int row, int col) WorldToGrid(Vector3 pos)
     {
-        // Y 오프셋을 먼저 제거하여 실제 그리드 좌표 계산
         float yPos = pos.y;
         if (maxRegisteredRow > limitSpawnerRows)
         {
             int rowOffset = maxRegisteredRow - limitSpawnerRows;
             float yOffset = rowOffset * (hexHeight * 0.75f);
-            yPos -= yOffset; // 오프셋 제거
+            yPos -= yOffset;
         }
         
         int row = Mathf.RoundToInt((startPosition.y - yPos) / (hexHeight * 0.75f));
@@ -296,6 +314,9 @@ public class HexMap : MonoBehaviour
         return (row, col);
     }
 
+    /// <summary>
+    /// 버블 착지 셀 찾기
+    /// </summary>
     public (int row, int col) FindLandingCell(Vector3 hitBubbleWorldPos, Vector3 impactPoint)
     {
         var (hr, hc) = WorldToGrid(hitBubbleWorldPos);

@@ -50,7 +50,7 @@ public class HexMapHandler : MonoBehaviour
         if (start == null)
             return levelList;
 
-        BubbleTypes targetType = start.GetBubbleType();
+        BubbleTypes targetType = start.BubbleType;
 
         Queue<(int r, int c)> q = new Queue<(int r, int c)>();
         HashSet<(int r, int c)> visited = new HashSet<(int r, int c)>();
@@ -73,7 +73,7 @@ public class HexMapHandler : MonoBehaviour
                     if (visited.Contains((nr, nc))) continue;
 
                     Bubble b = hexMap.GetBubble(nr, nc);
-                    if (b != null && b.GetBubbleType() == targetType)
+                    if (b != null && b.BubbleType == targetType)
                     {
                         visited.Add((nr, nc));
                         q.Enqueue((nr, nc));
@@ -105,7 +105,7 @@ public class HexMapHandler : MonoBehaviour
         if (start == null)
             return result;
 
-        BubbleTypes targetType = start.GetBubbleType();
+        BubbleTypes targetType = start.BubbleType;
 
         Queue<(int, int)> q = new Queue<(int, int)>();
         HashSet<(int, int)> visited = new HashSet<(int, int)>();
@@ -123,7 +123,7 @@ public class HexMapHandler : MonoBehaviour
                 if (!visited.Contains((nr, nc)))
                 {
                     Bubble nb = hexMap.GetBubble(nr, nc);
-                    if (nb != null && nb.GetBubbleType() == targetType)
+                    if (nb != null && nb.BubbleType == targetType)
                     {
                         visited.Add((nr, nc));
                         q.Enqueue((nr, nc));
