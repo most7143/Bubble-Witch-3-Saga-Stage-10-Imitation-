@@ -24,6 +24,75 @@ public class Bubble : MonoBehaviour
     private int hexCol = -1;
     private HexMap hexMap;
 
+    // 생성 순서 번호 (에디터 디버그용)
+    [SerializeField] private int spawnOrder = -1;
+    private TextMesh orderTextMesh;
+
+    public int GetSpawnOrder() => spawnOrder;
+    public void SetSpawnOrder(int order)
+    {
+        spawnOrder = order;
+        UpdateOrderDisplay();
+    }
+
+    void Start()
+    {
+        CreateOrderTextMesh();
+        UpdateOrderDisplay();
+    }
+
+    /// <summary>
+    /// 에디터에서만 보이는 순서 번호 TextMesh 생성
+    /// </summary>
+    private void CreateOrderTextMesh()
+    {
+#if UNITY_EDITOR
+        // TextMesh가 없으면 생성
+        if (orderTextMesh == null)
+        {
+            GameObject textObj = new GameObject("OrderText");
+            textObj.transform.SetParent(transform);
+            textObj.transform.localPosition = Vector3.zero;
+            textObj.transform.localScale = Vector3.one;
+            
+            orderTextMesh = textObj.AddComponent<TextMesh>();
+            orderTextMesh.anchor = TextAnchor.MiddleCenter;
+            orderTextMesh.alignment = TextAlignment.Center;
+            orderTextMesh.fontSize = 20;
+            orderTextMesh.color = Color.white;
+            orderTextMesh.characterSize = 0.1f;
+            orderTextMesh.fontStyle = FontStyle.Bold;
+        }
+#endif
+    }
+
+    /// <summary>
+    /// 순서 번호 표시 업데이트
+    /// </summary>
+    private void UpdateOrderDisplay()
+    {
+#if UNITY_EDITOR
+        if (orderTextMesh != null)
+        {
+            if (spawnOrder >= 0)
+            {
+                orderTextMesh.text = spawnOrder.ToString();
+                orderTextMesh.gameObject.SetActive(true);
+            }
+            else
+            {
+                orderTextMesh.gameObject.SetActive(false);
+            }
+        }
+#else
+        // 빌드에서는 TextMesh 비활성화
+        if (orderTextMesh != null)
+        {
+            orderTextMesh.gameObject.SetActive(false);
+        }
+#endif
+    }
+
     /// <summary>
     /// 버블이 hexMap에 등록되어 있는지 확인
     /// </summary>

@@ -2760,6 +2760,9 @@ MonoBehaviour:
   startPosition: {x: -2.6, y: 3}
   ObjectPool: {fileID: 2032640466}
   HexMapBubbleDestroy: {fileID: 1558187229}
+  showDebugGizmos: 1
+  showRegisteredBubbles: 1
+  showEmptyCells: 1
 --- !u!114 &1558187229
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2778,7 +2781,7 @@ MonoBehaviour:
   dropSuctionEase: 8
   dropSuctionVerticalScale: 0.35
   dropSuctionTiltDegrees: 90
-  dropSuctionRadiusScale: 0.569
+  dropSuctionRadiusScale: 0.1
 --- !u!114 &1558187230
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -49,6 +49,13 @@ public class HexMapBubbleDestroy : MonoBehaviour
     // ================================================================
     public void CheckAndPopMatches(int row, int col)
     {
+        // 버블 생성 중(RespawnBubbles)이면 파괴 로직 실행 안 함
+        if (IngameManager.Instance != null && 
+            IngameManager.Instance.CurrentState == BattleState.RespawnBubbles)
+        {
+            return;
+        }
+
         Bubble center = hexMapController.GetBubble(row, col);
         if (center == null) return;
 
@@ -734,7 +741,6 @@ private IEnumerator DestroyByWaveAndNotify(List<List<(int r, int c)>> levels, Li
         bubble.Rigid.linearVelocity = Vector2.zero;
         bubble.Rigid.angularVelocity = 0f;
         bubble.Rigid.bodyType = RigidbodyType2D.Kinematic;
-        bubble.Rigid.simulated = false;
 
         bubble.transform.DOKill();
 
