@@ -137,14 +137,14 @@ public class Bubble : MonoBehaviour
             return;
 
         float chance = Random.Range(0f, 1f);
-        
+
         if (chance < 0.3f)
         {
             IsFairy = true;
             FairySpriteRenderer.gameObject.SetActive(true);
             FairyAnimation();
         }
-      
+
 
     }
 
@@ -284,6 +284,25 @@ public class Bubble : MonoBehaviour
         }
 
         sequence.AppendCallback(() => FairySpriteRenderer.transform.localPosition = firstPoint);
+    }
+
+
+    public void AttackedDestoryBubble(BubbleTypes type)
+    {
+
+        ScoreSystem.Instance.DestoryBubbleAddScore(type, transform);
+
+
+        if (IngameManager.Instance.NeroObj.IsActive)
+        {
+            IngameManager.Instance.NeroObj.AddFillCount(2);
+        }
+
+    }
+
+    public void DropBubbleAddScore()
+    {
+        ScoreSystem.Instance.DropBubbleAddScore(transform);
     }
 
 

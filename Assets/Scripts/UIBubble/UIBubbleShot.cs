@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using DG.Tweening; // DOTween 추가
 
 public class UIBubbleShot : MonoBehaviour
 {
@@ -16,14 +17,22 @@ public class UIBubbleShot : MonoBehaviour
     private bool isShooting = false;         // 발사 중인지 여부
     private GameObject currentShotBubble = null;  // 현재 발사된 버블
 
-    
+
+
     public bool IsShooting() => isShooting;
 
     void Start()
     {
         // Reloading 상태 감지 코루틴 시작
         StartCoroutine(WatchForReloadingState());
+
+        
     }
+
+    /// <summary>
+    /// ShottingCount UI 갱신
+    /// </summary>
+
 
     /// <summary>
     /// Reloading 상태를 감지하고 장전 애니메이션 실행
@@ -33,8 +42,8 @@ public class UIBubbleShot : MonoBehaviour
         while (true)
         {
             // Reloading 상태이고 장전 애니메이션이 실행되지 않았을 때
-            if (IngameManager.Instance.CurrentState == BattleState.Reloading && 
-                Shooter != null && 
+            if (IngameManager.Instance.CurrentState == BattleState.Reloading &&
+                Shooter != null &&
                 !Shooter.BubbleRotation.IsRotating)
             {
                 // Nero 버블이 들어올 예정인지 체크
@@ -47,21 +56,33 @@ public class UIBubbleShot : MonoBehaviour
                         if (IngameManager.Instance.CurrentState == BattleState.Reloading)
                         {
                             IngameManager.Instance.ChangeState(BattleState.Normal);
+
+                            // Normal 상태로 전환 후 네로 버블 활성화 체크
+                            ActivateNeroButtonIfNeeded();
+
+                            // Normal 상태로 전환 후 ShottingCount 체크
+                            CheckShottingCountAndFail();
                         }
                         yield return new WaitForSeconds(0.1f);
                         continue;
                     }
-                    
+
                     // 발사 후 재장전 애니메이션 실행
                     Shooter.ReloadAfterShot();
-                    
+
                     // 장전 애니메이션이 끝날 때까지 대기
                     yield return new WaitUntil(() => !Shooter.BubbleRotation.IsRotating);
-                    
+
                     // 장전 완료 후 Normal 상태로 전환
                     if (IngameManager.Instance.CurrentState == BattleState.Reloading)
                     {
                         IngameManager.Instance.ChangeState(BattleState.Normal);
+
+                        // Normal 상태로 전환 후 네로 버블 활성화 체크
+                        ActivateNeroButtonIfNeeded();
+
+                        // Normal 상태로 전환 후 ShottingCount 체크
+                        CheckShottingCountAndFail();
                     }
                 }
                 else
@@ -69,16 +90,68 @@ public class UIBubbleShot : MonoBehaviour
                     // Nero 버블이 들어올 예정이면 ReloadAfterShot이 이미 호출되었을 것이므로
                     // 애니메이션이 끝날 때까지 대기만 함
                     yield return new WaitUntil(() => !Shooter.BubbleRotation.IsRotating);
-                    
+
                     // 장전 완료 후 Normal 상태로 전환
                     if (IngameManager.Instance.CurrentState == BattleState.Reloading)
                     {
                         IngameManager.Instance.ChangeState(BattleState.Normal);
+
+                        // Normal 상태로 전환 후 네로 버블 활성화 체크
+                        ActivateNeroButtonIfNeeded();
+
+                        // Normal 상태로 전환 후 ShottingCount 체크
+                        CheckShottingCountAndFail();
                     }
                 }
             }
-            
+
             yield return new WaitForSeconds(0.1f);
+        }
+    }
+
+    /// <summary>
+    /// 현재 장전된 버블에 네로 버블이 없으면 네로 버튼 활성화
+    /// </summary>
+    private void ActivateNeroButtonIfNeeded()
+    {
+        if (IngameManager.Instance == null ||
+            IngameManager.Instance.NeroObj == null ||
+            Shooter == null ||
+            Shooter.Bubbles == null)
+        {
+            return;
+        }
+
+        // 현재 장전된 버블에 네로 버블이 있는지 확인
+        bool hasNeroBubble = false;
+        foreach (var bubble in Shooter.Bubbles)
+        {
+            if (bubble != null && bubble.Type == BubbleTypes.Nero)
+            {
+                hasNeroBubble = true;
+                break;
+            }
+        }
+
+        // 네로 버블이 없으면 활성화
+        if (!hasNeroBubble)
+        {
+            IngameManager.Instance.NeroObj.ActivateAddFillButton();
+        }
+    }
+
+    /// <summary>
+    /// ShottingCount를 체크하고 0이면 Fail 로직 실행
+    /// </summary>
+    private void CheckShottingCountAndFail()
+    {
+        if (Shooter.ShottingCountValue <= 0)
+        {
+            // Fail 로직 실행
+            if (IngameManager.Instance != null)
+            {
+                IngameManager.Instance.GameFail();
+            }
         }
     }
 
@@ -87,7 +160,7 @@ public class UIBubbleShot : MonoBehaviour
     {
 
         // 이미 발사 중이거나 필요한 참조가 없으면 실행하지 않음
-        if (isShooting ||  Shooter.CurrentBubble==null || Preview == null || Aim.IsAiming == false)
+        if (isShooting || Shooter.CurrentBubble == null || Preview == null || Aim.IsAiming == false)
             return;
 
         // 슈팅 상태가 아니면 발사 불가
@@ -101,6 +174,13 @@ public class UIBubbleShot : MonoBehaviour
             HexMap?.HexMapBubbleDestroy?.ClearPendingNeroTargets();
             return;
         }
+
+
+
+        Shooter.ShottingCountValue--;
+
+        // UI 갱신
+        Shooter.UpdateShottingCountUI();
 
         // 네로 버블이면 프리뷰 범위 저장
         if (Shooter.CurrentBubble.Type == BubbleTypes.Nero)
@@ -124,7 +204,7 @@ public class UIBubbleShot : MonoBehaviour
         StartCoroutine(MoveBubbleCoroutine(bubbleObj, bubbleObj.transform.position, targetPosition.Value));
     }
 
-  
+
     private Bubble CreateBubbleFromUI(UIBubble uiBubble)
     {
 
@@ -134,12 +214,12 @@ public class UIBubbleShot : MonoBehaviour
 
         // 발사된 버블이므로 페어리가 붙지 않도록 설정
         bubble.SetBubble(uiBubble.Type, true);
-        
+
         bubble.transform.position = uiBubble.Rect.position; // 월드 위치 기준
         return bubble;
     }
 
- 
+
     private IEnumerator MoveBubbleCoroutine(Bubble bubble, Vector3 start, Vector3 target)
     {
         isShooting = true;
@@ -183,15 +263,15 @@ public class UIBubbleShot : MonoBehaviour
             }
             HexMap.RegisterBubble(row, col, bubble, true);
         }
-      
+
         // UI 버블 복구
         isShooting = false;
         currentShotBubble = null;
-        
+
         // CheckAndPopMatches가 호출되어 상태가 변경될 때까지 대기
         // 매치가 있으면 Destroying, 없으면 Reloading 상태로 전환됨
-        yield return new WaitUntil(() => 
-            IngameManager.Instance.CurrentState == BattleState.Reloading || 
+        yield return new WaitUntil(() =>
+            IngameManager.Instance.CurrentState == BattleState.Reloading ||
             IngameManager.Instance.CurrentState == BattleState.Destroying);
 
         // 1. 매치가 없어서 Reloading 상태로 전환된 경우
@@ -200,25 +280,43 @@ public class UIBubbleShot : MonoBehaviour
         {
             // WatchForReloadingState에서 자동으로 ReloadAfterShot 호출
             yield return new WaitUntil(() => IngameManager.Instance.CurrentState == BattleState.Normal);
+
+            // Normal 상태로 전환 후 네로 버블 활성화 체크
+            ActivateNeroButtonIfNeeded();
+
+            // Normal 상태로 전환 후 ShottingCount 체크
+            CheckShottingCountAndFail();
         }
         // 2. 매치가 있어서 Destroying 상태로 전환된 경우
         //    → 파괴 진행 → 재배치 완료 → Reloading 상태로 전환 → 새로운 버블 준비 → WatchForReloadingState에서 장전 처리
         else if (IngameManager.Instance.CurrentState == BattleState.Destroying)
         {
             // 파괴 및 재배치가 완료되어 Reloading 상태로 전환될 때까지 대기
-            yield return new WaitUntil(() => 
-                IngameManager.Instance.CurrentState == BattleState.Reloading || 
+            yield return new WaitUntil(() =>
+                IngameManager.Instance.CurrentState == BattleState.Reloading ||
                 IngameManager.Instance.CurrentState == BattleState.Normal);
-            
+
             // Reloading 상태로 전환되면 WatchForReloadingState에서 자동으로 처리
             if (IngameManager.Instance.CurrentState == BattleState.Reloading)
             {
                 yield return new WaitUntil(() => IngameManager.Instance.CurrentState == BattleState.Normal);
+
+                // Normal 상태로 전환 후 네로 버블 활성화 체크
+                ActivateNeroButtonIfNeeded();
+
+                // Normal 상태로 전환 후 ShottingCount 체크
+                CheckShottingCountAndFail();
+            }
+            else if (IngameManager.Instance.CurrentState == BattleState.Normal)
+            {
+                // 이미 Normal 상태면 바로 체크
+                ActivateNeroButtonIfNeeded();
+                CheckShottingCountAndFail();
             }
         }
     }
 
- 
+
     private List<Vector3> GeneratePath(Vector3 start, Vector3 target)
     {
         List<Vector3> path = new List<Vector3>();
@@ -274,7 +372,7 @@ public class UIBubbleShot : MonoBehaviour
         return SetZ(previewPos.Value, start.z);
     }
 
-   
+
     private Vector3 SetZ(Vector3 pos, float z) => new Vector3(pos.x, pos.y, z);
 
     // ===============================

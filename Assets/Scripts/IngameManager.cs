@@ -14,12 +14,17 @@ public class IngameManager : MonoBehaviour
         {
             Instance = this;
         }
-
-        DontDestroyOnLoad(gameObject);
     }
 
 
+    
     public Boss BossObj;
+
+    public Nero NeroObj;
+
+    public GameOverPopup GameOverPopup;
+
+  
     public BattleState CurrentState = BattleState.None;
 
     private void Start()
@@ -32,6 +37,23 @@ public class IngameManager : MonoBehaviour
     {
         CurrentState = BattleState.Starting;
         BossObj.SpawnBubble();
+    }
+
+    public void GameClear()
+    {
+        CurrentState = BattleState.GameOver;
+
+        GameOverPopup.gameObject.SetActive(true);
+        GameOverPopup.ShowClear();
+    
+    }
+
+    public void GameFail()
+    {
+        CurrentState = BattleState.GameOver;
+
+        GameOverPopup.gameObject.SetActive(true);
+        GameOverPopup.ShowFail();
     }
 
     public void ChangeState(BattleState state)

@@ -30,6 +30,8 @@ public class Boss : MonoBehaviour
         if(CurrentHealth <= 0)
         {
             Anim.SetTrigger("Death");
+
+            IngameManager.Instance.GameClear();
         }
         else
         {

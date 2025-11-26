@@ -5,12 +5,17 @@ using System.Collections;
 
 public class Nero : MonoBehaviour
 {
-    private int MaxFillCount = 4;
-    private int currentFillCount = 0;
-
     public Image FillImage;
 
     public Button AddFillButton;
+
+    public bool IsActive = false;
+
+    private int MaxFillCount = 100;
+    private int currentFillCount = 0;
+    
+
+
 
     [Header("참조")]
     public UIBubbleShooter UIBubbleShooter; // UIBubbleShooter 참조 추가
@@ -39,6 +44,18 @@ public class Nero : MonoBehaviour
         }
 
     }
+    public void DeactivateAddFillButton()
+    {
+        AddFillButton.gameObject.SetActive(false);
+        IsActive=false;
+    }
+
+    public void ActivateAddFillButton()
+    {
+        AddFillButton.gameObject.SetActive(true);
+        IsActive=true;
+    }
+    
 
     /// <summary>
     /// 버블 재장전 코루틴 (ReloadAfterShot 사용)
@@ -66,7 +83,7 @@ public class Nero : MonoBehaviour
 
             // 프리팹을 인스턴스화 (Canvas의 자식으로 생성)
             GameObject bubble = Instantiate(bubblePrefab, currentBubble.Rect.parent);
-            
+
             // UIBubble 컴포넌트 가져오기
             UIBubble uiBubble = bubble.GetComponent<UIBubble>();
             if (uiBubble != null)
@@ -102,8 +119,8 @@ public class Nero : MonoBehaviour
             moveSeq.OnComplete(() =>
             {
                 // 버블이 도착한 후 게이지 채우기
-                AddFillCount();
-                
+                AddFillCount(20);
+
                 if (bubble != null)
                 {
                     // 애니메이션 정리
@@ -118,7 +135,7 @@ public class Nero : MonoBehaviour
         else
         {
             // 버블이 없어도 게이지 채우기
-            AddFillCount();
+            AddFillCount(20);
         }
 
         // 재장전 시작
@@ -133,18 +150,21 @@ public class Nero : MonoBehaviour
 
 
 
-    public void AddFillCount()
+    public void AddFillCount(int count)
     {
-        currentFillCount++;
+        currentFillCount+=count;
 
         if (currentFillCount >= MaxFillCount)
         {
             currentFillCount = 0;
+            DeactivateAddFillButton();
             SpawnNeroBubble();
         }
 
         UpdateFillImage();
     }
+
+ 
 
     private void UpdateFillImage()
     {

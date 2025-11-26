@@ -13,6 +13,8 @@ public class HexMap : MonoBehaviour
     [SerializeField] Vector2 startPosition = new Vector2(-2.6f, 3f);
 
 
+    public Transform ParentPivot;
+
     [Header("References")]
     public ObjectPool ObjectPool;
     public HexMapBubbleDestroy HexMapBubbleDestroy;
@@ -28,6 +30,7 @@ public class HexMap : MonoBehaviour
     private float hexWidth;
     private float hexHeight;
 
+    private int limitSpawnerRows=6;
 
     // === Public Accessors ===
     public int Rows => rows;
@@ -38,6 +41,7 @@ public class HexMap : MonoBehaviour
     public Vector3[,] Positions => worldPositions;
 
     public float BubbleRadius => bubbleRadius;
+    public int LimitSpawnerRows => limitSpawnerRows;
 
 
     void Awake()
@@ -515,5 +519,4 @@ public class HexMap : MonoBehaviour
         }
     }
 #endif
-
 }

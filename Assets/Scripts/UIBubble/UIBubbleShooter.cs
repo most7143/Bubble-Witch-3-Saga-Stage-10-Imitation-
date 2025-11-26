@@ -21,6 +21,9 @@ public class UIBubbleShooter : MonoBehaviour
 
     public Vector2 CircleCenter;
 
+
+    public int ShottingCountValue = 22;
+
     // Nero 버블이 곧 들어올 예정인지 체크하는 플래그
     private bool isNeroBubblePending = false;
 
@@ -30,6 +33,12 @@ public class UIBubbleShooter : MonoBehaviour
     private readonly Queue<UIBubble> inactiveBubbles = new Queue<UIBubble>();
     private bool needsAutoAlignAfterShot = false;
 
+
+
+
+
+
+
     void Start()
     {
         ShooterButton.onClick.AddListener(ClickShooter);
@@ -37,6 +46,10 @@ public class UIBubbleShooter : MonoBehaviour
         CircleCenter = Rect.anchoredPosition;
 
         InitializeBubbles();
+
+        // ShottingCount 초기값 설정
+
+        UpdateShottingCountUI();
     }
     private void InitializeBubbles()
     {
@@ -82,6 +95,9 @@ public class UIBubbleShooter : MonoBehaviour
         // Normal 상태가 아니면 발사 불가 (Shooting, Destroying, RespawnBubbles 등)
         if (BubbleRotation.IsRotating || IngameManager.Instance.CurrentState != BattleState.Normal) return;
 
+        ShottingCountValue--;
+
+
         UpdateSelectedBubble();  // 선택 갱신
 
         BubbleRotation.AnimateBubbleRotation(Bubbles, BubbleRotationTypes.Rotate); // 애니메이션
@@ -115,6 +131,7 @@ public class UIBubbleShooter : MonoBehaviour
             Bubbles[i].gameObject.SetActive(true);
             DeselectBubble(Bubbles[i]);
         }
+
     }
 
     /// <summary>
@@ -433,5 +450,11 @@ public class UIBubbleShooter : MonoBehaviour
     {
         BubbleTypes[] randomTypes = { BubbleTypes.Red, BubbleTypes.Blue, BubbleTypes.Yellow };
         return randomTypes[Random.Range(0, randomTypes.Length)];
+    }
+
+
+    public void UpdateShottingCountUI()
+    {
+        ShottingCount.text = ShottingCountValue.ToString();
     }
 }

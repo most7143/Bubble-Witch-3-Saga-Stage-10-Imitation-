@@ -116,6 +116,12 @@ public class UIBubblePreview : MonoBehaviour
             previewBubbleInstance.transform.position = previewPosition.Value;
             previewBubbleInstance.SetActive(true);
         }
+        else if (previewPosition.HasValue && Aim.IsAiming == true)
+        {
+            // fallback: gridPosition이 없으면 기존 방식 사용
+            previewBubbleInstance.transform.position = previewPosition.Value;
+            previewBubbleInstance.SetActive(true);
+        }
         else
         {
             HidePreviewBubble();
