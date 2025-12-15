@@ -453,7 +453,7 @@ public class BubbleSpawner : MonoBehaviour
                 }
                 else
                 {
-                    var emptyCells = HexMapHandler.GetEmptyAdjacentCells(hexMap, firstRow, firstCol);
+                    var emptyCells = hexMap.HexMapHandler.GetEmptyAdjacentCells(firstRow, firstCol);
                     var (emptyRow, emptyCol) = emptyCells.Count > 0 ? emptyCells[0] : (firstRow, firstCol);
                     hexMap.RegisterBubble(emptyRow, emptyCol, bubble, false);
                     bubbles[i] = (bubble, 0, emptyRow, emptyCol);
@@ -496,7 +496,7 @@ public class BubbleSpawner : MonoBehaviour
                         }
                         else
                         {
-                            var emptyCells = HexMapHandler.GetEmptyAdjacentCells(hexMap, extendedNextRow, extendedNextCol);
+                            var emptyCells = hexMap.HexMapHandler.GetEmptyAdjacentCells(extendedNextRow, extendedNextCol);
                             var (emptyRow, emptyCol) = emptyCells.Count > 0 ? emptyCells[0] : (extendedNextRow, extendedNextCol);
                             hexMap.RegisterBubble(emptyRow, emptyCol, bubble, false);
                             StartCoroutine(MoveBubbleSmoothly(bubble, emptyRow, emptyCol));
@@ -535,7 +535,7 @@ public class BubbleSpawner : MonoBehaviour
             }
             else
             {
-                var emptyCells = HexMapHandler.GetEmptyAdjacentCells(hexMap, nextRow, nextCol);
+                var emptyCells = hexMap.HexMapHandler.GetEmptyAdjacentCells(nextRow, nextCol);
                 var (emptyRow, emptyCol) = emptyCells.Count > 0 ? emptyCells[0] : (nextRow, nextCol);
                 hexMap.RegisterBubble(emptyRow, emptyCol, bubble, false);
                 StartCoroutine(MoveBubbleSmoothly(bubble, emptyRow, emptyCol));
@@ -769,7 +769,7 @@ public class BubbleSpawner : MonoBehaviour
 
         if (!hexMap.IsEmpty(row, col))
         {
-            var emptyCells = HexMapHandler.GetEmptyAdjacentCells(hexMap, row, col);
+            var emptyCells = hexMap.HexMapHandler.GetEmptyAdjacentCells(row, col);
             var (emptyRow, emptyCol) = emptyCells.Count > 0 ? emptyCells[0] : (row, col);
             row = emptyRow;
             col = emptyCol;

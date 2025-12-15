@@ -96,6 +96,7 @@ MonoBehaviour:
   SelectedScale: {x: 0.5, y: 0.5, z: 1}
   DeselectedScale: {x: 0.4, y: 0.4, z: 1}
   currentAngle: -90
+  _bubbleResourceData: {fileID: 11400000, guid: 7e078d6639a61a74cb3b368b33d1e750, type: 2}
 --- !u!95 &4119138430304914233
 Animator:
   serializedVersion: 7

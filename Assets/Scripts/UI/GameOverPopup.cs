@@ -52,7 +52,7 @@ public class GameOverPopup : MonoBehaviour
     /// </summary>
     public void SetScore()
     {
-        ScoreText.text = "Score: " + ScoreSystem.Instance.Score.ToString();
+        ScoreText.text = "Score: " + IngameManager.Instance.Score.ToString();
     }
  
 }

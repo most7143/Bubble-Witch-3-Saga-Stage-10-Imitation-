@@ -211,7 +211,7 @@ public class UIBubbleShot : MonoBehaviour
             var (row, col) = HexMap.WorldToGrid(snappedPos);
             if (!HexMap.IsEmpty(row, col))
             {
-                var emptyCells = HexMapHandler.GetEmptyAdjacentCells(HexMap, row, col);
+                var emptyCells = HexMap.HexMapHandler.GetEmptyAdjacentCells(row, col);
                 var (emptyRow, emptyCol) = emptyCells.Count > 0 ? emptyCells[0] : (row, col);
                 snappedPos = HexMap.GetWorldPosition(emptyRow, emptyCol);
                 row = emptyRow;

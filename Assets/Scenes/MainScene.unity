@@ -2771,6 +2771,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1452749564}
   - component: {fileID: 1452749563}
+  - component: {fileID: 1452749565}
   m_Layer: 0
   m_Name: Ingame Manager
   m_TagString: Untagged
@@ -2793,7 +2794,7 @@ MonoBehaviour:
   BossObj: {fileID: 1151013942}
   NeroObj: {fileID: 941866930}
   GameOverPopup: {fileID: 1700500135}
-  CurrentState: 1
+  _uiScore: {fileID: 1452749565}
 --- !u!4 &1452749564
 Transform:
   m_ObjectHideFlags: 0
@@ -2809,6 +2810,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1452749565
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1452749562}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b23dbc9fd7650b545a35ba1349be1dce, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  uiCanvas: {fileID: 1786316912}
 --- !u!1 &1512476445
 GameObject:
   m_ObjectHideFlags: 0
@@ -3465,55 +3479,6 @@ MonoBehaviour:
   HexMap: {fileID: 1558187228}
   BubblePool: {fileID: 2032640466}
   shotSpeed: 10
---- !u!1 &1555333172
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1555333174}
-  - component: {fileID: 1555333173}
-  m_Layer: 0
-  m_Name: Score System
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1555333173
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1555333172}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 911c97b8ec2ec9540b7c165618e2aa46, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  uiCanvas: {fileID: 1786316912}
-  Score: 0
-  ScoreBonusCount: 0
-  DestroyBubbleScore: 10
-  DropBubbleScore: 100
---- !u!4 &1555333174
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1555333172}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.2819256, y: 2.8288965, z: -0.0020249984}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1558187225
 GameObject:
   m_ObjectHideFlags: 0
@@ -3525,7 +3490,6 @@ GameObject:
   - component: {fileID: 1558187227}
   - component: {fileID: 1558187228}
   - component: {fileID: 1558187229}
-  - component: {fileID: 1558187230}
   m_Layer: 0
   m_Name: Hex Map
   m_TagString: Untagged
@@ -3589,18 +3553,6 @@ MonoBehaviour:
   dropSuctionVerticalScale: 0.35
   dropSuctionTiltDegrees: 90
   dropSuctionRadiusScale: 0.1
---- !u!114 &1558187230
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1558187225}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7a1b22c3b9271b243ac26eb23654edd3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1573861650
 GameObject:
   m_ObjectHideFlags: 0
@@ -4457,7 +4409,6 @@ SceneRoots:
   - {fileID: 1612503114}
   - {fileID: 446728665}
   - {fileID: 1452749564}
-  - {fileID: 1555333174}
   - {fileID: 753572144}
   - {fileID: 1821683355}
   - {fileID: 1786316913}

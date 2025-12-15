@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using DG.Tweening;
 
-public class HexMap : MonoBehaviour
+public class HexMap : MonoBehaviour, IHexMap
 {
     [Header("Grid Settings")]
     [SerializeField] int rows = 7;
@@ -40,20 +40,9 @@ public class HexMap : MonoBehaviour
     public Vector2 StartPosition => startPosition;
     public float BubbleRadius => bubbleRadius;
     public int LimitSpawnerRows => limitSpawnerRows;
+    public IHexMapHandler HexMapHandler => _interfaceHexMap;
 
-    public Vector3[,] Positions
-    {
-        get
-        {
-            Vector3[,] pos = new Vector3[rows, cols];
-            for (int row = 0; row < rows; row++)
-            {
-                for (int col = 0; col < cols; col++)
-                    pos[row, col] = GetWorldPosition(row, col);
-            }
-            return pos;
-        }
-    }
+    private IHexMapHandler _interfaceHexMap;
 
     /// <summary>
     /// 그리드 초기화 및 HexMapBubbleDestroy 초기화
@@ -61,6 +50,7 @@ public class HexMap : MonoBehaviour
     void Awake()
     {
         InitializeGrid();
+        _interfaceHexMap = new HexMapHandler(this);
         HexMapBubbleDestroy.Initialize(this);
         
         if (IngameManager.Instance != null && IngameManager.Instance.BossObj != null)
@@ -369,4 +359,5 @@ public class HexMap : MonoBehaviour
 
         return (nr, nc);
     }
+
 }

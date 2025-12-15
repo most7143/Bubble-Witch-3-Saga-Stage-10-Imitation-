@@ -16,6 +16,8 @@ public class Bubble : MonoBehaviour
 
     public SpriteRenderer FairySpriteRenderer;
 
+    [SerializeField]
+    private BubbleResourceData _bubbleResourceData;
     [SerializeField] private BubbleTypes Type = BubbleTypes.Red;
 
     // 헥사맵 좌표 정보
@@ -128,12 +130,12 @@ public class Bubble : MonoBehaviour
     {
         if (SpriteRenderer != null)
         {
-            SpriteRenderer.sprite = ResourcesManager.Instance.GetBubbleSprite(Type);
+            SpriteRenderer.sprite = _bubbleResourceData.GetSprite(Type);
         }
 
         if (Anim != null)
         {
-            Anim.runtimeAnimatorController = ResourcesManager.Instance.GetBubbleAnimatorController(Type);
+            Anim.runtimeAnimatorController = _bubbleResourceData.GetAnimator(Type);
         }
     }
 
@@ -232,7 +234,7 @@ public class Bubble : MonoBehaviour
     /// </summary>
     public void AttackedDestoryBubble(BubbleTypes type)
     {
-        ScoreSystem.Instance.DestoryBubbleAddScore(type, transform);
+        IngameManager.Instance.DestoryBubbleAddScore(type, transform);
 
         if (IngameManager.Instance.NeroObj.IsActive)
         {
@@ -245,7 +247,7 @@ public class Bubble : MonoBehaviour
     /// </summary>
     public void DropBubbleAddScore()
     {
-        ScoreSystem.Instance.DropBubbleAddScore(transform);
+        IngameManager.Instance.DropBubbleAddScore(transform);
     }
 
 

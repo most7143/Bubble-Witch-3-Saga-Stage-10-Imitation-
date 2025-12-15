@@ -104,7 +104,7 @@ public class HexMapBubbleDestroy : MonoBehaviour
             return;
         }
 
-        List<List<(int r, int c)>> levels = HexMapHandler.CollectConnectedByLevel(hexMapController, row, col);
+        List<List<(int r, int c)>> levels = hexMapController.HexMapHandler.CollectConnectedByLevel(row, col);
         if (levels.Count == 0) return;
 
         int totalCount = 0;
@@ -113,9 +113,9 @@ public class HexMapBubbleDestroy : MonoBehaviour
 
         if (totalCount < 3)
         {
-            if (ScoreSystem.Instance != null)
+            if (IngameManager.Instance != null)
             {
-                ScoreSystem.Instance.BubbleDestroyFail();
+                IngameManager.Instance.BubbleDestroyFail();
             }
             
             if (IngameManager.Instance.CurrentState == BattleState.Shooting)
@@ -149,7 +149,7 @@ public class HexMapBubbleDestroy : MonoBehaviour
             IngameManager.Instance.ChangeState(BattleState.Destroying);
         }
 
-        List<(int r, int c)> floatingBubbles = HexMapHandler.FindFloatingBubblesAfterRemoval(hexMapController, toRemove);
+        List<(int r, int c)> floatingBubbles = hexMapController.HexMapHandler.FindFloatingBubblesAfterRemoval(toRemove);
 
         DestroyLevelImmediate(levels[0], attackerType);
 
@@ -166,9 +166,9 @@ public class HexMapBubbleDestroy : MonoBehaviour
             }
             else
             {
-                if (ScoreSystem.Instance != null)
+                if (IngameManager.Instance != null)
                 {
-                    ScoreSystem.Instance.BubbleDestroySuceess();
+                    IngameManager.Instance.BubbleDestroySuccess();
                 }
                 
                 if (hasFairy)
@@ -239,7 +239,7 @@ public class HexMapBubbleDestroy : MonoBehaviour
         DestroyLevelImmediate(existingCells, BubbleTypes.Nero);
 
         HashSet<(int r, int c)> removedSet = new HashSet<(int r, int c)>(existingCells);
-        List<(int r, int c)> floatingBubbles = HexMapHandler.FindFloatingBubblesAfterRemoval(hexMapController, removedSet);
+        List<(int r, int c)> floatingBubbles = hexMapController.HexMapHandler.FindFloatingBubblesAfterRemoval(removedSet);
 
         if (floatingBubbles.Count > 0)
         {
@@ -248,9 +248,9 @@ public class HexMapBubbleDestroy : MonoBehaviour
         else
         {
             // 파괴 성공 처리 (콤보 카운트 증가)
-            if (ScoreSystem.Instance != null)
+            if (IngameManager.Instance != null)
             {
-                ScoreSystem.Instance.BubbleDestroySuceess();
+                IngameManager.Instance.BubbleDestroySuccess();
             }
             
             if (!hasFairy)
@@ -409,7 +409,7 @@ public class HexMapBubbleDestroy : MonoBehaviour
         }
 
         // 고립 버블 미리 계산
-        List<(int r, int c)> floatingBubbles = HexMapHandler.FindFloatingBubblesAfterRemoval(hexMapController, toRemove);
+        List<(int r, int c)> floatingBubbles = hexMapController.HexMapHandler.FindFloatingBubblesAfterRemoval(toRemove);
 
         // Spell 버블은 레벨별 전파 없이 모두 즉시 파괴
         List<(int r, int c)> spellBubbles = new List<(int r, int c)>(toRemove);
@@ -439,9 +439,9 @@ public class HexMapBubbleDestroy : MonoBehaviour
             else
             {
                 // 고립 버블이 없으면 파괴 성공 처리
-                if (ScoreSystem.Instance != null)
+                if (IngameManager.Instance != null)
                 {
-                    ScoreSystem.Instance.BubbleDestroySuceess();
+                    IngameManager.Instance.BubbleDestroySuccess();
                 }
                 
                 // 고립 버블이 없으면
@@ -593,9 +593,9 @@ public class HexMapBubbleDestroy : MonoBehaviour
     }
     
     // 파괴 성공 처리 (콤보 카운트 증가)
-    if (ScoreSystem.Instance != null)
+    if (IngameManager.Instance != null)
     {
-        ScoreSystem.Instance.BubbleDestroySuceess();
+        IngameManager.Instance.BubbleDestroySuccess();
     }
     
     // 페어리가 있으면 Hitting 상태는 유지 (체력 연출 후 Reloading으로 전환됨)
@@ -611,7 +611,7 @@ public class HexMapBubbleDestroy : MonoBehaviour
     /// </summary>
     public List<(int row, int col)> FindConnectedSameType(int row, int col)
     {
-        return HexMapHandler.FindConnectedSameType(hexMapController, row, col);
+        return hexMapController.HexMapHandler.FindConnectedSameType(row, col);
     }
 
     /// <summary>
@@ -629,7 +629,7 @@ public class HexMapBubbleDestroy : MonoBehaviour
     /// </summary>
     public List<(int r, int c)> FindFloatingBubbles()
     {
-        return HexMapHandler.FindFloatingBubbles(hexMapController);
+        return hexMapController.HexMapHandler.FindFloatingBubbles();
     }
 
     /// <summary>
@@ -649,8 +649,8 @@ public class HexMapBubbleDestroy : MonoBehaviour
 
         var start = floatingList[0];
         
-        Dictionary<(int, int), int> depth = HexMapHandler.CalculateDepthFromStart(
-            hexMapController, start.Item1, start.Item2, floatingList);
+        Dictionary<(int, int), int> depth = hexMapController.HexMapHandler.CalculateDepthFromStart(
+            start.Item1, start.Item2, floatingList);
         
         List<(int r, int c)> ordered = new List<(int, int)>(floatingList);
         ordered.Sort((a, b) =>
@@ -697,9 +697,9 @@ public class HexMapBubbleDestroy : MonoBehaviour
         }
         
         // 파괴 성공 처리 (콤보 카운트 증가)
-        if (ScoreSystem.Instance != null)
+        if (IngameManager.Instance != null)
         {
-            ScoreSystem.Instance.BubbleDestroySuceess();
+            IngameManager.Instance.BubbleDestroySuccess();
         }
         
         // 페어리가 있으면 Hitting 상태는 유지 (체력 연출 후 Reloading으로 전환됨)

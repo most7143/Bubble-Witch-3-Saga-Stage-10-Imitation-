@@ -109,6 +109,7 @@ MonoBehaviour:
   Anim: {fileID: 5929893897463035656}
   IsFairy: 0
   FairySpriteRenderer: {fileID: 4015906367726830292}
+  _bubbleResourceData: {fileID: 11400000, guid: 7e078d6639a61a74cb3b368b33d1e750, type: 2}
   Type: 0
 --- !u!58 &5354233613464022766
 CircleCollider2D:

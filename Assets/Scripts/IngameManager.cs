@@ -4,74 +4,107 @@ public class IngameManager : MonoBehaviour
 {
     public static IngameManager Instance;
 
-    /// <summary>
-    /// 싱글톤 인스턴스 초기화
-    /// </summary>
+    public Boss BossObj;
+    public Nero NeroObj;
+    public GameOverPopup GameOverPopup;
+
+    private GameState _gameState;
+    private ScoreRule _scoreRule;
+
+    [SerializeField]
+    private UIScore _uiScore;
+
+    [SerializeField]    public BattleState CurrentState => _gameState.CurrentState;
+
     void Awake()
     {
         if (Instance != null)
         {
             Destroy(gameObject);
+            return;
         }
-        else
-        {
-            Instance = this;
-        }
+
+        Instance = this;
+        _gameState = new GameState();
+        _scoreRule = new ScoreRule();
     }
 
-    public Boss BossObj;
-    public Nero NeroObj;
-    public GameOverPopup GameOverPopup;
-    public BattleState CurrentState = BattleState.None;
-
-    /// <summary>
-    /// 게임 시작
-    /// </summary>
-    private void Start()
+    void Start()
     {
         GameStart();
     }
 
-    /// <summary>
-    /// 게임 시작 처리
-    /// </summary>
     public void GameStart()
     {
-        CurrentState = BattleState.Starting;
+        _gameState.ChangeState(BattleState.Starting);
         BossObj.SpawnBubble();
     }
 
-    /// <summary>
-    /// 게임 클리어 처리
-    /// </summary>
     public void GameClear()
     {
-        CurrentState = BattleState.GameOver;
+        _gameState.ChangeState(BattleState.GameOver);
         GameOverPopup.gameObject.SetActive(true);
         GameOverPopup.ShowClear();
     }
 
-    /// <summary>
-    /// 게임 실패 처리
-    /// </summary>
     public void GameFail()
     {
-        CurrentState = BattleState.GameOver;
+        _gameState.ChangeState(BattleState.GameOver);
         GameOverPopup.gameObject.SetActive(true);
         GameOverPopup.ShowFail();
     }
 
-    /// <summary>
-    /// 배틀 상태 변경
-    /// </summary>
     public void ChangeState(BattleState state)
     {
-        CurrentState = state;
+        _gameState.ChangeState(state);
+
+#if UNITY_EDITOR
+        Debug.Log("CurrentState: " + CurrentState);
+#endif
     }
 
+    public void OnBubbleDestroyed(BubbleTypes type, Transform point)
+    {
+        int score = _scoreRule.OnBubbleDestroyed(type);
+        _uiScore.ShowScore(score, point.position);
+    }
 
+    /// <summary>
+    /// 버블 파괴 시 점수 추가 (기존 DestoryBubbleAddScore 호환)
+    /// </summary>
+    public void DestoryBubbleAddScore(BubbleTypes type, Transform point)
+    {
+        OnBubbleDestroyed(type, point);
+    }
 
+    /// <summary>
+    /// 버블 드롭 시 점수 추가 (기존 DropBubbleAddScore 호환)
+    /// </summary>
+    public void DropBubbleAddScore(Transform point)
+    {
+        int score = _scoreRule.OnBubbleDropped();
+        _uiScore.ShowScore(score, point.position);
+    }
 
+    /// <summary>
+    /// 버블 파괴 실패 시 보너스 카운트 리셋
+    /// </summary>
+    public void BubbleDestroyFail()
+    {
+        _scoreRule.BubbleDestroyFail();
+    }
 
+    /// <summary>
+    /// 버블 파괴 성공 시 호출 (호환성 유지)
+    /// </summary>
+    public void BubbleDestroySuccess()
+    {
+        _scoreRule.BubbleDestroySuccess();
+    }
+
+    /// <summary>
+    /// 현재 점수 반환
+    /// </summary>
+    public int Score => _scoreRule.Score;
 
 }
