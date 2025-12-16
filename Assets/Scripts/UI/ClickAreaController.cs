@@ -1,9 +1,8 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine.Events;
+using System.Collections.Generic;
 
 public class ClickAreaController : MonoBehaviour
 {
@@ -11,148 +10,135 @@ public class ClickAreaController : MonoBehaviour
     public class ClickAreaData
     {
         public Image image;
-        public ClickAreaTypes Type;
+        public ClickAreaTypes type;
+
+        [HideInInspector]
+        public IClickAreaResponder responder;
     }
 
     public List<ClickAreaData> ClickAreas;
 
-
-    public ClickAreaTypes ClickType;
-
     public UIBubbleAim BubbleAim;
     public UIBubbleShot BubbleShot;
 
-    [Header("프레스 딜레이 설정")]
-    [SerializeField] private float pressDelay = 0.5f; // 0.5초 딜레이
+    [SerializeField] private float pressDelay = 0.5f;
 
-    // 딜레이 코루틴 추적
-    private Coroutine pressDelayCoroutine = null;
+    private ClickAreaTypes currentClickType = ClickAreaTypes.None;
+    private ClickAreaTypes startClickType = ClickAreaTypes.None;
+    private bool isPointerDown = false;
 
-    /// <summary>
-    /// 클릭 영역 이벤트 등록
-    /// </summary>
     private void Start()
     {
         foreach (var area in ClickAreas)
         {
+            area.responder = CreateResponder(area.type);
+
             AddEvent(area.image.gameObject, EventTriggerType.PointerDown, () =>
             {
-                OnClickDown(area.Type);
-
-                OnPress(area.Type);
-
-                ClickType = area.Type;
+                isPointerDown = true;
+                currentClickType = area.type;
+                // 조준 영역(Click 또는 Press)에서 시작할 때만 시작 타입 저장
+                if (area.type == ClickAreaTypes.Click || area.type == ClickAreaTypes.Press)
+                {
+                    startClickType = area.type;
+                }
+                else
+                {
+                    startClickType = ClickAreaTypes.None;
+                }
+                area.responder?.OnPointerDown();
             });
-          
+
             AddEvent(area.image.gameObject, EventTriggerType.PointerEnter, () =>
             {
-                if (IsPointerDown())
+                // 전역 마우스 다운 상태도 체크 (슈터 UI에서 드래그 시작 시 대응)
+                bool pointerDown = isPointerDown || IsPointerDown();
+                
+                if (pointerDown)
                 {
-                    if (ClickType == area.Type || ClickType == ClickAreaTypes.None)
+                    // 마우스 다운 상태에서 조준 영역(Click 또는 Press)으로 들어올 때
+                    if (area.type == ClickAreaTypes.Click || area.type == ClickAreaTypes.Press)
                     {
-                        OnClickDown(area.Type);
-                        OnPress(area.Type);
-                    }
+                        // 시작 영역과 다른 타입이면 조준하지 않음
+                        if (startClickType != ClickAreaTypes.None && startClickType != area.type)
+                        {
+                            return;
+                        }
 
-                    if(area.Type == ClickAreaTypes.Cancel)
-                    {
-                        OnExit(area.Type);
+                        // 조준이 활성화되지 않은 상태이거나, 같은 타입 영역으로 이동할 때 조준 활성화
+                        if (BubbleAim != null && (!BubbleAim.IsAiming || currentClickType == area.type))
+                        {
+                            currentClickType = area.type;
+                            // 조준 영역으로 이동 시 시작 타입 저장 (아직 저장되지 않은 경우)
+                            if (startClickType == ClickAreaTypes.None)
+                            {
+                                startClickType = area.type;
+                            }
+                            area.responder?.OnPointerDown();
+                        }
                     }
+                    else if (area.type == ClickAreaTypes.Cancel)
+                    {
+                        area.responder?.OnExit();
+                    }
+                }
+                else
+                {
+                    area.responder?.OnPointerEnter();
                 }
             });
-       
+
+            AddEvent(area.image.gameObject, EventTriggerType.PointerUp, () =>
+            {
+                area.responder?.OnPointerUp();
+            });
         }
     }
 
-    /// <summary>
-    /// 전역 포인터 업 감지 및 버블 발사 처리
-    /// </summary>
     private void Update()
     {
-        if (Input.GetMouseButtonUp(0) || (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Ended))
+        // 전역 마우스 다운 상태 체크 (슈터 UI에서 드래그 시작 시 대응)
+        if (IsPointerDown() && !isPointerDown)
         {
-            CancelPressDelay();
+            isPointerDown = true;
+        }
 
-            if (BubbleAim != null && BubbleAim.IsAiming)
+        if (IsPointerUp())
+        {
+            if (isPointerDown)
             {
-                if (BubbleShot != null)
+                if (BubbleAim != null && BubbleAim.IsAiming)
                 {
-                    BubbleShot.ShootBubble();
+                    BubbleShot?.ShootBubble();
                 }
+
+                BubbleAim?.SetAimEnabled(false);
             }
 
-            BubbleAim.SetAimEnabled(false);
-            ClickType = ClickAreaTypes.None;
+            isPointerDown = false;
+            currentClickType = ClickAreaTypes.None;
+            startClickType = ClickAreaTypes.None;
         }
     }
 
-    /// <summary>
-    /// 클릭 다운 이벤트 처리
-    /// </summary>
-    private void OnClickDown(ClickAreaTypes type)
+    private IClickAreaResponder CreateResponder(ClickAreaTypes type)
     {
-        if (type == ClickAreaTypes.Click)
+        switch (type)
         {
-            BubbleAim.SetAimEnabled(true);
+            case ClickAreaTypes.Click:
+                return new ClickResponder(BubbleAim);
+
+            case ClickAreaTypes.Press:
+                return new PressResponder(this, BubbleAim, pressDelay);
+
+            case ClickAreaTypes.Cancel:
+                return new CancelResponder(BubbleAim);
+
+            default:
+                return null;
         }
     }
 
-    /// <summary>
-    /// 프레스 이벤트 처리
-    /// </summary>
-    private void OnPress(ClickAreaTypes type)
-    {
-        CancelPressDelay();
-
-        pressDelayCoroutine = StartCoroutine(PressDelayCoroutine(type));
-    }
-
-    /// <summary>
-    /// 클릭 영역 이탈 이벤트 처리
-    /// </summary>
-    private void OnExit(ClickAreaTypes type)
-    {
-        BubbleAim.SetAimEnabled(false);
-    }
-
-    /// <summary>
-    /// 프레스 딜레이 코루틴
-    /// </summary>
-    private IEnumerator PressDelayCoroutine(ClickAreaTypes type)
-    {
-        yield return new WaitForSeconds(pressDelay);
-
-        ExecutePressAction(type);
-    }
-
-    /// <summary>
-    /// 딜레이 후 실행될 실제 프레스 액션
-    /// </summary>
-    private void ExecutePressAction(ClickAreaTypes type)
-    {
-        if (type == ClickAreaTypes.Press)
-        {
-            BubbleAim.SetAimEnabled(true, 2);
-        }
-
-        pressDelayCoroutine = null;
-    }
-
-    /// <summary>
-    /// 프레스 딜레이 취소
-    /// </summary>
-    private void CancelPressDelay()
-    {
-        if (pressDelayCoroutine != null)
-        {
-            StopCoroutine(pressDelayCoroutine);
-            pressDelayCoroutine = null;
-        }
-    }
-
-    /// <summary>
-    /// 이벤트 트리거에 이벤트 추가
-    /// </summary>
     private void AddEvent(GameObject obj, EventTriggerType type, UnityAction action)
     {
         EventTrigger trigger = obj.GetComponent<EventTrigger>();
@@ -160,15 +146,19 @@ public class ClickAreaController : MonoBehaviour
             trigger = obj.AddComponent<EventTrigger>();
 
         var entry = new EventTrigger.Entry { eventID = type };
-        entry.callback.AddListener((data) => action());
+        entry.callback.AddListener(_ => action());
         trigger.triggers.Add(entry);
     }
 
-    /// <summary>
-    /// 포인터 다운 상태 확인
-    /// </summary>
     private bool IsPointerDown()
     {
-        return Input.GetMouseButton(0) || (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began);
+        return Input.GetMouseButton(0)
+            || (Input.touchCount > 0 && Input.GetTouch(0).phase != TouchPhase.Ended && Input.GetTouch(0).phase != TouchPhase.Canceled);
+    }
+
+    private bool IsPointerUp()
+    {
+        return Input.GetMouseButtonUp(0)
+            || (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Ended);
     }
 }

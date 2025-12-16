@@ -700,14 +700,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ClickAreas:
   - image: {fileID: 1970898176}
-    Type: 1
+    type: 1
   - image: {fileID: 1290558473}
-    Type: 2
+    type: 2
   - image: {fileID: 402928910}
-    Type: 3
+    type: 3
   - image: {fileID: 1338711941}
-    Type: 4
-  ClickType: 0
+    type: 4
   BubbleAim: {fileID: 1531736040}
   BubbleShot: {fileID: 1531736042}
   pressDelay: 0.2
@@ -1129,50 +1128,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!1 &446728663
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 446728665}
-  - component: {fileID: 446728664}
-  m_Layer: 0
-  m_Name: Resources Manager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &446728664
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 446728663}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a28e4894d8f3b494abf1157a3022f0a8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!4 &446728665
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 446728663}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -1.6625385, z: 90}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &494605111
 GameObject:
   m_ObjectHideFlags: 0
@@ -4407,7 +4362,6 @@ SceneRoots:
   - {fileID: 277126376}
   - {fileID: 297057510}
   - {fileID: 1612503114}
-  - {fileID: 446728665}
   - {fileID: 1452749564}
   - {fileID: 753572144}
   - {fileID: 1821683355}
